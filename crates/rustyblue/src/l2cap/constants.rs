@@ -1,0 +1,127 @@
+//! Constants used in the L2CAP protocol
+
+// L2CAP header sizes
+pub const L2CAP_BASIC_HEADER_SIZE: usize = 4;  // Length (2) + CID (2)
+pub const L2CAP_EXTENDED_HEADER_SIZE: usize = 6;  // Basic + Control (2)
+
+// L2CAP signaling command codes
+pub const L2CAP_COMMAND_REJECT: u8 = 0x01;
+pub const L2CAP_CONNECTION_REQUEST: u8 = 0x02;
+pub const L2CAP_CONNECTION_RESPONSE: u8 = 0x03;
+pub const L2CAP_CONFIGURE_REQUEST: u8 = 0x04;
+pub const L2CAP_CONFIGURE_RESPONSE: u8 = 0x05;
+pub const L2CAP_DISCONNECTION_REQUEST: u8 = 0x06;
+pub const L2CAP_DISCONNECTION_RESPONSE: u8 = 0x07;
+pub const L2CAP_ECHO_REQUEST: u8 = 0x08;
+pub const L2CAP_ECHO_RESPONSE: u8 = 0x09;
+pub const L2CAP_INFORMATION_REQUEST: u8 = 0x0A;
+pub const L2CAP_INFORMATION_RESPONSE: u8 = 0x0B;
+pub const L2CAP_CREATE_CHANNEL_REQUEST: u8 = 0x0C;
+pub const L2CAP_CREATE_CHANNEL_RESPONSE: u8 = 0x0D;
+pub const L2CAP_MOVE_CHANNEL_REQUEST: u8 = 0x0E;
+pub const L2CAP_MOVE_CHANNEL_RESPONSE: u8 = 0x0F;
+pub const L2CAP_MOVE_CHANNEL_CONFIRMATION: u8 = 0x10;
+pub const L2CAP_MOVE_CHANNEL_CONFIRMATION_RESPONSE: u8 = 0x11;
+pub const L2CAP_CONNECTION_PARAMETER_UPDATE_REQUEST: u8 = 0x12;
+pub const L2CAP_CONNECTION_PARAMETER_UPDATE_RESPONSE: u8 = 0x13;
+pub const L2CAP_LE_CREDIT_BASED_CONNECTION_REQUEST: u8 = 0x14;
+pub const L2CAP_LE_CREDIT_BASED_CONNECTION_RESPONSE: u8 = 0x15;
+pub const L2CAP_LE_FLOW_CONTROL_CREDIT: u8 = 0x16;
+
+// Reserved Channel IDs
+pub const L2CAP_NULL_CID: u16 = 0x0000;
+pub const L2CAP_SIGNALING_CID: u16 = 0x0001;
+pub const L2CAP_CONNECTIONLESS_CID: u16 = 0x0002;
+pub const L2CAP_AMP_MANAGER_CID: u16 = 0x0003;
+pub const L2CAP_ATTRIBUTE_PROTOCOL_CID: u16 = 0x0004;
+pub const L2CAP_LE_SIGNALING_CID: u16 = 0x0005;
+pub const L2CAP_SECURITY_MANAGER_PROTOCOL_CID: u16 = 0x0006;
+pub const L2CAP_DYNAMIC_CID_MIN: u16 = 0x0040;
+pub const L2CAP_DYNAMIC_CID_MAX: u16 = 0xFFFF;
+
+// Result codes for L2CAP signaling
+pub const L2CAP_RESULT_SUCCESS: u16 = 0x0000;
+pub const L2CAP_RESULT_PENDING: u16 = 0x0001;
+pub const L2CAP_RESULT_REFUSED_PSM_UNSUPPORTED: u16 = 0x0002;
+pub const L2CAP_RESULT_REFUSED_SECURITY_BLOCK: u16 = 0x0003;
+pub const L2CAP_RESULT_REFUSED_NO_RESOURCES: u16 = 0x0004;
+pub const L2CAP_RESULT_INVALID_SOURCE_CID: u16 = 0x0006;
+pub const L2CAP_RESULT_SOURCE_CID_ALREADY_ALLOCATED: u16 = 0x0007;
+pub const L2CAP_RESULT_UNACCEPTABLE_PARAMETERS: u16 = 0x000B;
+pub const L2CAP_RESULT_INVALID_PARAMETERS: u16 = 0x000C;
+
+// Configuration option types
+pub const L2CAP_CONF_MTU: u8 = 0x01;
+pub const L2CAP_CONF_FLUSH_TIMEOUT: u8 = 0x02;
+pub const L2CAP_CONF_QOS: u8 = 0x03;
+pub const L2CAP_CONF_RFC: u8 = 0x04;
+pub const L2CAP_CONF_FCS: u8 = 0x05;
+pub const L2CAP_CONF_EXT_FLOW: u8 = 0x06;
+pub const L2CAP_CONF_EXT_WINDOW: u8 = 0x07;
+
+// Default values
+pub const L2CAP_DEFAULT_MTU: u16 = 672;
+pub const L2CAP_LE_DEFAULT_MTU: u16 = 23;
+pub const L2CAP_LE_MAX_MPS: u16 = 65533;
+pub const L2CAP_DEFAULT_FLUSH_TIMEOUT: u16 = 0xFFFF;
+
+// Information Request types
+pub const L2CAP_CONNLESS_MTU: u16 = 0x0001;
+pub const L2CAP_EXTENDED_FEATURES: u16 = 0x0002;
+pub const L2CAP_FIXED_CHANNELS: u16 = 0x0003;
+
+// Extended Features mask bits
+pub const L2CAP_FEATURE_FLOW_CONTROL: u32 = 0x00000001;
+pub const L2CAP_FEATURE_RETRANSMISSION: u32 = 0x00000002;
+pub const L2CAP_FEATURE_BIDIRECTIONAL_QOS: u32 = 0x00000004;
+pub const L2CAP_FEATURE_ENHANCED_RETRANSMISSION: u32 = 0x00000008;
+pub const L2CAP_FEATURE_STREAMING: u32 = 0x00000010;
+pub const L2CAP_FEATURE_FCS: u32 = 0x00000020;
+pub const L2CAP_FEATURE_EXTENDED_FLOW_SPEC: u32 = 0x00000040;
+pub const L2CAP_FEATURE_FIXED_CHANNELS: u32 = 0x00000080;
+pub const L2CAP_FEATURE_EXTENDED_WINDOW_SIZE: u32 = 0x00000100;
+pub const L2CAP_FEATURE_UNICAST_CONNECTIONLESS_DATA: u32 = 0x00000200;
+pub const L2CAP_FEATURE_ENHANCED_CREDIT_BASED_FLOW_CONTROL: u32 = 0x00000400;
+
+// Control Field bits for Enhanced Retransmission Mode
+pub const L2CAP_CTRL_FRAME_TYPE_MASK: u16 = 0x0001;
+pub const L2CAP_CTRL_SUPERVISORY_MASK: u16 = 0x000C;
+pub const L2CAP_CTRL_POLL: u16 = 0x0010;
+pub const L2CAP_CTRL_FINAL: u16 = 0x0010;
+pub const L2CAP_CTRL_SAR_MASK: u16 = 0xC000;
+pub const L2CAP_CTRL_REQSEQ_MASK: u16 = 0x3F00;
+pub const L2CAP_CTRL_TXSEQ_MASK: u16 = 0x007E;
+
+// Masks for extracting values from control field
+pub const L2CAP_CTRL_REQSEQ_SHIFT: u8 = 8;
+pub const L2CAP_CTRL_TXSEQ_SHIFT: u8 = 1;
+pub const L2CAP_CTRL_SAR_SHIFT: u8 = 14;
+
+// Command Reject reasons
+pub const L2CAP_REJECT_NOT_UNDERSTOOD: u16 = 0x0000;
+pub const L2CAP_REJECT_MTU_EXCEEDED: u16 = 0x0001;
+pub const L2CAP_REJECT_INVALID_CID: u16 = 0x0002;
+
+// Supervisory function bits (S-frames)
+pub const L2CAP_CTRL_RR: u16 = 0x0000;
+pub const L2CAP_CTRL_REJ: u16 = 0x0004;
+pub const L2CAP_CTRL_RNR: u16 = 0x0008;
+pub const L2CAP_CTRL_SREJ: u16 = 0x000C;
+
+// Segmentation and Reassembly (SAR) bits
+pub const L2CAP_SAR_UNSEGMENTED: u16 = 0x0000;
+pub const L2CAP_SAR_START: u16 = 0x4000;
+pub const L2CAP_SAR_END: u16 = 0x8000;
+pub const L2CAP_SAR_CONTINUATION: u16 = 0xC000;
+
+// Connection Parameter Update result codes
+pub const L2CAP_CONN_PARAM_UPDATE_ACCEPTED: u16 = 0x0000;
+pub const L2CAP_CONN_PARAM_UPDATE_REJECTED: u16 = 0x0001;
+
+// LE-specific L2CAP Connection Parameter Update Ranges
+pub const L2CAP_LE_CONN_INTERVAL_MIN: u16 = 0x0006; // 7.5 ms (6 * 1.25)
+pub const L2CAP_LE_CONN_INTERVAL_MAX: u16 = 0x0C80; // 4 s (3200 * 1.25)
+pub const L2CAP_LE_CONN_LATENCY_MIN: u16 = 0x0000;
+pub const L2CAP_LE_CONN_LATENCY_MAX: u16 = 0x01F3; // 499
+pub const L2CAP_LE_SUPERVISION_TIMEOUT_MIN: u16 = 0x000A; // 100 ms (10 * 10)
+pub const L2CAP_LE_SUPERVISION_TIMEOUT_MAX: u16 = 0x0C80; // 32 s (3200 * 10)

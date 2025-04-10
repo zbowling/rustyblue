@@ -1,11 +1,8 @@
 //! Example: Opening an HCI socket
 //! 
 //! This example demonstrates how to open an HCI socket using the rustyblue library.
-//! 
-//! Note: This example requires root privileges to run, as opening raw HCI sockets
-//! requires elevated permissions.
 
-use rustyblue::HciSocket;
+use rustyblue::hci::HciSocket;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Opening HCI socket for device 0...");
@@ -21,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             eprintln!("Failed to open HCI socket: {}", e);
             eprintln!("This might be because:");
-            eprintln!("1. You don't have sufficient privileges (try running with sudo)");
+            eprintln!("1. You don't have sufficient permissions to access the Bluetooth device");
             eprintln!("2. No Bluetooth adapter is available");
             eprintln!("3. The Bluetooth adapter is not powered on");
         }

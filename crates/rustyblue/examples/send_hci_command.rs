@@ -2,7 +2,7 @@
 //! 
 //! This example demonstrates how to send various HCI commands using the rustyblue library.
 
-use rustyblue::{HciSocket, HciCommand};
+use rustyblue::hci::{HciSocket, HciCommand};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Opening HCI socket for device 0...");
@@ -15,6 +15,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Enable LE scanning
     println!("\nEnabling LE scanning...");
+    socket.send_command(&HciCommand::LeSetScanParameters {
+        scan_type: 1,          // Active scanning
+        scan_interval: 0x0010, // 10ms in 0.625ms units
+        scan_window: 0x0010,   // 10ms in 0.625ms units
+        own_address_type: 0,   // Public Device Address
+        filter_policy: 0,      // Accept all advertisements
+    })?;
+    println!("LE scan parameters set!");
+    
     socket.send_command(&HciCommand::LeSetScanEnable {
         enable: true,
         filter_duplicates: true,

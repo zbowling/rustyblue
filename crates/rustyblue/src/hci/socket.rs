@@ -4,13 +4,15 @@
 //! allowing for communication with Bluetooth controllers.
 
 use std::os::unix::io::{AsRawFd, RawFd};
-use crate::hci::packet::HciCommand;
+use std::time::Duration;
+use crate::hci::packet::{HciCommand, HciEvent};
 use crate::error::HciError;
 
 // Bluetooth socket constants
 const AF_BLUETOOTH: i32 = 31;
 const BTPROTO_HCI: i32 = 1;
 const HCI_CHANNEL_RAW: i32 = 0;
+const HCI_EVENT_PKT: u8 = 0x04;
 
 /// Represents an HCI socket
 #[derive(Debug)]
@@ -85,6 +87,73 @@ impl HciSocket {
             -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
             _ => Ok(()),
         }
+    }
+    
+    /// Read an HCI event from the socket
+    pub fn read_event(&self) -> Result<HciEvent, HciError> {
+        let mut buffer = [0u8; 258]; // Max HCI event packet size
+        
+        // Read packet type and header
+        let bytes_read = unsafe {
+            libc::read(self.fd, buffer.as_mut_ptr() as *mut libc::c_void, buffer.len())
+        };
+        
+        if bytes_read < 0 {
+            return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+        }
+        
+        if bytes_read < 3 || buffer[0] != HCI_EVENT_PKT {
+            return Err(HciError::InvalidPacketFormat);
+        }
+        
+        // Parse event
+        match HciEvent::parse(&buffer[1..bytes_read as usize]) {
+            Some(event) => Ok(event),
+            None => Err(HciError::InvalidPacketFormat),
+        }
+    }
+    
+    /// Read an HCI event from the socket with a timeout
+    pub fn read_event_timeout(&self, timeout: Option<Duration>) -> Result<HciEvent, HciError> {
+        if let Some(timeout) = timeout {
+            // Set up the fd_set for select()
+            let mut read_fds: libc::fd_set = unsafe { std::mem::zeroed() };
+            unsafe {
+                libc::FD_ZERO(&mut read_fds);
+                libc::FD_SET(self.fd, &mut read_fds);
+            }
+            
+            // Set up the timeout
+            let mut timeout_val = libc::timeval {
+                tv_sec: timeout.as_secs() as libc::time_t,
+                tv_usec: timeout.subsec_micros() as libc::suseconds_t,
+            };
+            
+            // Wait for data to be available
+            let result = unsafe {
+                libc::select(
+                    self.fd + 1,
+                    &mut read_fds,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    &mut timeout_val,
+                )
+            };
+            
+            if result < 0 {
+                return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+            }
+            
+            if result == 0 {
+                return Err(HciError::ReceiveError(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timed out waiting for HCI event",
+                )));
+            }
+        }
+        
+        // Read the event
+        self.read_event()
     }
 }
 

@@ -35,6 +35,47 @@ impl Uuid {
             _ => None,
         }
     }
+    
+    /// Create a UUID from a 16-bit value
+    pub fn from_u16(uuid: u16) -> Self {
+        Uuid::Uuid16(uuid)
+    }
+    
+    /// Create a UUID from a 32-bit value
+    pub fn from_u32(uuid: u32) -> Self {
+        Uuid::Uuid32(uuid)
+    }
+    
+    /// Create a UUID from a 128-bit value
+    pub fn from_u128(uuid: u128) -> Self {
+        let bytes = uuid.to_le_bytes();
+        Uuid::Uuid128(bytes)
+    }
+    
+    /// Get the bytes representation of this UUID
+    pub fn as_bytes(&self) -> Vec<u8> {
+        match self {
+            Uuid::Uuid16(uuid) => uuid.to_le_bytes().to_vec(),
+            Uuid::Uuid32(uuid) => uuid.to_le_bytes().to_vec(),
+            Uuid::Uuid128(uuid) => uuid.to_vec(),
+        }
+    }
+    
+    /// Get the 16-bit UUID value if this is a 16-bit UUID
+    pub fn as_u16(&self) -> Option<u16> {
+        match self {
+            Uuid::Uuid16(uuid) => Some(*uuid),
+            _ => None,
+        }
+    }
+    
+    /// Get the 32-bit UUID value if this is a 32-bit UUID
+    pub fn as_u32(&self) -> Option<u32> {
+        match self {
+            Uuid::Uuid32(uuid) => Some(*uuid),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Uuid {

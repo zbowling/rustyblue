@@ -6,7 +6,7 @@
 //! requires elevated permissions.
 
 use std::time::Duration;
-use rustyblue::{HciSocket, hci::packet::HciCommand, hci::packet::LeAdvertisingReport, scan::parse_advertising_data};
+use rustyblue::{HciSocket, hci::packet::HciCommand};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Opening HCI socket for device 0...");
