@@ -29,6 +29,11 @@ struct SockaddrHci {
 }
 
 impl HciSocket {
+    /// Gets the raw file descriptor for the socket
+    pub fn as_raw_fd(&self) -> RawFd {
+        self.fd
+    }
+
     /// Opens a new HCI socket
     ///
     /// # Arguments
@@ -67,26 +72,6 @@ impl HciSocket {
         }
 
         Ok(HciSocket { fd })
-    }
-
-    /// Gets the raw file descriptor for the socket
-    pub fn as_raw_fd(&self) -> RawFd {
-        self.fd
-    }
-
-    /// Sends an HCI command to the controller
-    pub fn send_command(&self, command: &HciCommand) -> Result<(), HciError> {
-        let packet = command.to_packet();
-        match unsafe {
-            libc::write(
-                self.fd,
-                packet.as_ptr() as *const libc::c_void,
-                packet.len(),
-            )
-        } {
-            -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
-            _ => Ok(()),
-        }
     }
 
     /// Read an HCI event from the socket
@@ -158,6 +143,21 @@ impl HciSocket {
 
         // Read the event
         self.read_event()
+    }
+
+    /// Sends an HCI command to the controller
+    pub fn send_command(&self, command: &HciCommand) -> Result<(), HciError> {
+        let packet = command.to_packet();
+        match unsafe {
+            libc::write(
+                self.fd,
+                packet.as_ptr() as *const libc::c_void,
+                packet.len(),
+            )
+        } {
+            -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
+            _ => Ok(()),
+        }
     }
 }
 

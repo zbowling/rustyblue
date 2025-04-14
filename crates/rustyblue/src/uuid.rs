@@ -78,8 +78,8 @@ impl Uuid {
         }
     }
 
-     /// Generates a random (Version 4) UUID.
-     pub fn new_random_v4() -> Self {
+    /// Generates a random (Version 4) UUID.
+    pub fn new_random_v4() -> Self {
         let mut bytes = [0u8; 16];
         rand::thread_rng().fill_bytes(&mut bytes);
 
@@ -95,8 +95,8 @@ impl Uuid {
         bytes[0..4].reverse(); // time_low
         bytes[4..6].reverse(); // time_mid
         bytes[6..8].reverse(); // time_high_and_version
-        // bytes[8..10] (clk_seq_hi_res, clk_seq_low) - usually kept BE
-        // bytes[10..16] (node) - usually kept BE
+                               // bytes[8..10] (clk_seq_hi_res, clk_seq_low) - usually kept BE
+                               // bytes[10..16] (node) - usually kept BE
 
         Uuid { bytes }
     }
@@ -113,8 +113,8 @@ impl Uuid {
         bytes
     }
 
-     /// Checks if the UUID is derived from the standard Bluetooth base UUID.
-     fn is_sig_assigned(&self) -> bool {
+    /// Checks if the UUID is derived from the standard Bluetooth base UUID.
+    fn is_sig_assigned(&self) -> bool {
         self.bytes[0..BASE_OFFSET] == BASE_UUID_BYTES[0..BASE_OFFSET]
     }
 
@@ -123,10 +123,14 @@ impl Uuid {
     /// Returns `Some(u16)` if the UUID is a standard SIG-assigned 16-bit UUID,
     /// otherwise returns `None`.
     pub fn as_u16(&self) -> Option<u16> {
-        if self.is_sig_assigned() 
-           && self.bytes[BASE_OFFSET + 2] == 0 
-           && self.bytes[BASE_OFFSET + 3] == 0 {
-            Some(u16::from_le_bytes([self.bytes[BASE_OFFSET], self.bytes[BASE_OFFSET + 1]]))
+        if self.is_sig_assigned()
+            && self.bytes[BASE_OFFSET + 2] == 0
+            && self.bytes[BASE_OFFSET + 3] == 0
+        {
+            Some(u16::from_le_bytes([
+                self.bytes[BASE_OFFSET],
+                self.bytes[BASE_OFFSET + 1],
+            ]))
         } else {
             None
         }
@@ -215,7 +219,7 @@ impl<'a> PartialEq<&'a [u8]> for Uuid {
     }
 }
 
-// --- Hashing --- 
+// --- Hashing ---
 
 impl Hash for Uuid {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -227,7 +231,7 @@ impl Hash for Uuid {
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Standard hyphenated format (big-endian)
-        let b = self.as_bytes_be(); 
+        let b = self.as_bytes_be();
         write!(f, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]
@@ -241,12 +245,12 @@ impl fmt::Debug for Uuid {
         if let Some(u16_val) = self.as_u16() {
             write!(f, "Uuid(0x{:04X})", u16_val)
         } else if let Some(u32_val) = self.as_u32() {
-             // Only show 32-bit if it's not also representable as 16-bit
-             if u32_val > u16::MAX as u32 {
-                 write!(f, "Uuid(0x{:08X})", u32_val)
-             } else {
-                 write!(f, "Uuid(0x{:04X})", u32_val as u16)
-             }
+            // Only show 32-bit if it's not also representable as 16-bit
+            if u32_val > u16::MAX as u32 {
+                write!(f, "Uuid(0x{:08X})", u32_val)
+            } else {
+                write!(f, "Uuid(0x{:04X})", u32_val as u16)
+            }
         } else {
             fmt::Display::fmt(self, f)
         }
@@ -279,22 +283,25 @@ impl FromStr for Uuid {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let cleaned: String = s.chars().filter(|c| c.is_ascii_hexdigit()).collect();
-        
+
         match cleaned.len() {
-            4 => { // 16-bit short form e.g., "180A"
+            4 => {
+                // 16-bit short form e.g., "180A"
                 let val = u16::from_str_radix(&cleaned, 16)?;
                 Ok(Uuid::from_u16(val))
             }
-            8 => { // 32-bit short form e.g., "0000180A"
-                 let val = u32::from_str_radix(&cleaned, 16)?;
-                 Ok(Uuid::from_u32(val))
+            8 => {
+                // 32-bit short form e.g., "0000180A"
+                let val = u32::from_str_radix(&cleaned, 16)?;
+                Ok(Uuid::from_u32(val))
             }
-            32 => { // Full 128-bit form without hyphens
-                 let mut bytes_be = [0u8; 16];
-                 hex::decode_to_slice(&cleaned, &mut bytes_be)?;
-                 Ok(Uuid::from_bytes_be(bytes_be))
+            32 => {
+                // Full 128-bit form without hyphens
+                let mut bytes_be = [0u8; 16];
+                hex::decode_to_slice(&cleaned, &mut bytes_be)?;
+                Ok(Uuid::from_bytes_be(bytes_be))
             }
             _ => Err(UuidParseError::InvalidLength),
         }
     }
-} 
+}

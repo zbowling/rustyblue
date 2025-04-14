@@ -4,19 +4,19 @@ use std::error::Error;
 fn main() -> Result<(), Box<dyn Error>> {
     // Create an SDP client
     let mut client = SdpClient::new();
-    
+
     // Connect to SDP service
     println!("Connecting to SDP service...");
     client.connect()?;
-    
+
     // Define service UUIDs to search for
     // Searching for SPP (Serial Port Profile) as an example
     let spp_uuid = rustyblue::sdp::Uuid::Uuid16(0x1101);
-    
+
     // Discover services
     println!("Discovering services...");
     let services = client.discover_services(&[spp_uuid])?;
-    
+
     // Print found services
     println!("Found {} services", services.len());
     for service in services {
@@ -36,9 +36,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         println!();
     }
-    
+
     // Disconnect
     client.disconnect()?;
-    
+
     Ok(())
 }
