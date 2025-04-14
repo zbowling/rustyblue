@@ -14,6 +14,7 @@ pub mod gap;
 pub mod l2cap;
 pub mod smp;
 pub mod att;
+pub mod uuid;
 
 // Re-export common types for convenience
 pub use error::HciError;
@@ -25,6 +26,7 @@ pub use gap::{GapAdapter, BdAddr, AddressType, Device};
 pub use l2cap::{L2capManager, L2capChannel, L2capChannelType, L2capError};
 pub use smp::{SmpManager, IoCapability, SecurityLevel, AuthRequirements, KeyDistribution};
 pub use att::{AttClient, AttServer, AttributeDatabase, Attribute, AttError};
+// pub use uuid::Uuid; // Removed re-export to fix privacy issues
 
 #[cfg(test)]
 mod tests {

@@ -1,11 +1,11 @@
 //! Type definitions for the ATT protocol
+use super::constants::*;
 use super::error::{AttError, AttErrorCode, AttResult};
 use crate::gap::BdAddr;
-use crate::gatt::Uuid;
-use super::constants::*;
-use std::io::{Cursor, Read, Write};
-use std::convert::TryFrom;
+use crate::uuid::Uuid;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
+use std::io::{Cursor, Read, Write};
 
 /// ATT Permission flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,108 +19,130 @@ impl AttPermissions {
     pub fn new(raw_value: u16) -> Self {
         Self { raw_value }
     }
-    
+
     /// Create empty permissions (no access)
     pub fn none() -> Self {
-        Self { raw_value: ATT_PERM_NONE }
+        Self {
+            raw_value: ATT_PERM_NONE,
+        }
     }
-    
+
     /// Create read-only permissions
     pub fn read_only() -> Self {
-        Self { raw_value: ATT_PERM_READ }
+        Self {
+            raw_value: ATT_PERM_READ,
+        }
     }
-    
+
     /// Create write-only permissions
     pub fn write_only() -> Self {
-        Self { raw_value: ATT_PERM_WRITE }
+        Self {
+            raw_value: ATT_PERM_WRITE,
+        }
     }
-    
+
     /// Create read-write permissions
     pub fn read_write() -> Self {
-        Self { raw_value: ATT_PERM_READ | ATT_PERM_WRITE }
+        Self {
+            raw_value: ATT_PERM_READ | ATT_PERM_WRITE,
+        }
     }
-    
+
     /// Create encrypted read-write permissions
     pub fn encrypted() -> Self {
-        Self { raw_value: ATT_PERM_READ_ENCRYPTED | ATT_PERM_WRITE_ENCRYPTED }
+        Self {
+            raw_value: ATT_PERM_READ_ENCRYPTED | ATT_PERM_WRITE_ENCRYPTED,
+        }
     }
-    
+
     /// Create authenticated read-write permissions
     pub fn authenticated() -> Self {
-        Self { raw_value: ATT_PERM_READ_AUTHENTICATED | ATT_PERM_WRITE_AUTHENTICATED }
+        Self {
+            raw_value: ATT_PERM_READ_AUTHENTICATED | ATT_PERM_WRITE_AUTHENTICATED,
+        }
     }
-    
+
     /// Create authorized read-write permissions
     pub fn authorized() -> Self {
-        Self { raw_value: ATT_PERM_READ_AUTHORIZED | ATT_PERM_WRITE_AUTHORIZED }
+        Self {
+            raw_value: ATT_PERM_READ_AUTHORIZED | ATT_PERM_WRITE_AUTHORIZED,
+        }
     }
-    
+
     /// Create permissions for a given level of security
     pub fn for_security_level(level: SecurityLevel) -> Self {
         match level {
             SecurityLevel::None => Self::read_write(),
-            SecurityLevel::EncryptionOnly => Self { 
-                raw_value: ATT_PERM_READ | ATT_PERM_WRITE | 
-                          ATT_PERM_READ_ENCRYPTED | ATT_PERM_WRITE_ENCRYPTED 
+            SecurityLevel::EncryptionOnly => Self {
+                raw_value: ATT_PERM_READ
+                    | ATT_PERM_WRITE
+                    | ATT_PERM_READ_ENCRYPTED
+                    | ATT_PERM_WRITE_ENCRYPTED,
             },
-            SecurityLevel::EncryptionWithAuthentication => Self { 
-                raw_value: ATT_PERM_READ | ATT_PERM_WRITE | 
-                          ATT_PERM_READ_ENCRYPTED | ATT_PERM_WRITE_ENCRYPTED |
-                          ATT_PERM_READ_AUTHENTICATED | ATT_PERM_WRITE_AUTHENTICATED
+            SecurityLevel::EncryptionWithAuthentication => Self {
+                raw_value: ATT_PERM_READ
+                    | ATT_PERM_WRITE
+                    | ATT_PERM_READ_ENCRYPTED
+                    | ATT_PERM_WRITE_ENCRYPTED
+                    | ATT_PERM_READ_AUTHENTICATED
+                    | ATT_PERM_WRITE_AUTHENTICATED,
             },
-            SecurityLevel::SecureConnections => Self { 
-                raw_value: ATT_PERM_READ | ATT_PERM_WRITE | 
-                          ATT_PERM_READ_ENCRYPTED | ATT_PERM_WRITE_ENCRYPTED |
-                          ATT_PERM_READ_AUTHENTICATED | ATT_PERM_WRITE_AUTHENTICATED
+            SecurityLevel::SecureConnections => Self {
+                raw_value: ATT_PERM_READ
+                    | ATT_PERM_WRITE
+                    | ATT_PERM_READ_ENCRYPTED
+                    | ATT_PERM_WRITE_ENCRYPTED
+                    | ATT_PERM_READ_AUTHENTICATED
+                    | ATT_PERM_WRITE_AUTHENTICATED,
             },
         }
     }
-    
+
     /// Get the raw permissions value
     pub fn value(&self) -> u16 {
         self.raw_value
     }
-    
+
     /// Check if read is permitted
     pub fn can_read(&self) -> bool {
         (self.raw_value & ATT_PERM_READ) != 0
     }
-    
+
     /// Check if write is permitted
     pub fn can_write(&self) -> bool {
         (self.raw_value & ATT_PERM_WRITE) != 0
     }
-    
+
     /// Check if read requires encryption
     pub fn read_requires_encryption(&self) -> bool {
         (self.raw_value & ATT_PERM_READ_ENCRYPTED) != 0
     }
-    
+
     /// Check if write requires encryption
     pub fn write_requires_encryption(&self) -> bool {
         (self.raw_value & ATT_PERM_WRITE_ENCRYPTED) != 0
     }
-    
+
     /// Check if read requires authentication
     pub fn read_requires_authentication(&self) -> bool {
         (self.raw_value & ATT_PERM_READ_AUTHENTICATED) != 0
     }
-    
+
     /// Check if write requires authentication
     pub fn write_requires_authentication(&self) -> bool {
         (self.raw_value & ATT_PERM_WRITE_AUTHENTICATED) != 0
     }
-    
+
     /// Check if read requires authorization
     pub fn read_requires_authorization(&self) -> bool {
         (self.raw_value & ATT_PERM_READ_AUTHORIZED) != 0
     }
-    
+
     /// Check if write requires authorization
     pub fn write_requires_authorization(&self) -> bool {
         (self.raw_value & ATT_PERM_WRITE_AUTHORIZED) != 0
     }
-    
+
     /// Get required security level for reading
     pub fn read_security_level(&self) -> SecurityLevel {
         if self.read_requires_authentication() {
@@ -131,7 +153,7 @@ impl AttPermissions {
             SecurityLevel::None
         }
     }
-    
+
     /// Get required security level for writing
     pub fn write_security_level(&self) -> SecurityLevel {
         if self.write_requires_authentication() {
@@ -142,23 +164,23 @@ impl AttPermissions {
             SecurityLevel::None
         }
     }
-    
+
     /// Check if the permissions allow reading with the given security level
     pub fn allows_read_with_security(&self, level: SecurityLevel) -> bool {
         if !self.can_read() {
             return false;
         }
-        
+
         let required = self.read_security_level();
         level >= required
     }
-    
+
     /// Check if the permissions allow writing with the given security level
     pub fn allows_write_with_security(&self, level: SecurityLevel) -> bool {
         if !self.can_write() {
             return false;
         }
-        
+
         let required = self.write_security_level();
         level >= required
     }
@@ -181,10 +203,10 @@ pub enum SecurityLevel {
 pub trait AttPacket: Sized {
     /// Opcode for this packet
     fn opcode() -> u8;
-    
+
     /// Parse packet from bytes
     fn parse(data: &[u8]) -> AttResult<Self>;
-    
+
     /// Serialize packet to bytes
     fn serialize(&self) -> Vec<u8>;
 }
@@ -204,35 +226,36 @@ impl AttPacket for ErrorResponse {
     fn opcode() -> u8 {
         ATT_ERROR_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 5 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let request_opcode = data[1];
-        
+
         let mut cursor = Cursor::new(&data[2..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let error_code = data[4].into();
-        
+
         Ok(Self {
             request_opcode,
             handle,
             error_code,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(5);
-        
+
         packet.push(Self::opcode());
         packet.push(self.request_opcode);
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.push(self.error_code.into());
-        
+
         packet
     }
 }
@@ -246,12 +269,12 @@ impl ErrorResponse {
             error_code,
         }
     }
-    
+
     /// Create a new error response from an AttError
     pub fn from_error(request_opcode: u8, error: &AttError) -> Self {
         let handle = error.handle().unwrap_or(0);
         let error_code = error.to_error_code();
-        
+
         Self {
             request_opcode,
             handle,
@@ -271,25 +294,26 @@ impl AttPacket for ExchangeMtuRequest {
     fn opcode() -> u8 {
         ATT_EXCHANGE_MTU_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let client_mtu = cursor.read_u16::<LittleEndian>()
+        let client_mtu = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         Ok(Self { client_mtu })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3);
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.client_mtu.to_le_bytes());
-        
+
         packet
     }
 }
@@ -305,25 +329,26 @@ impl AttPacket for ExchangeMtuResponse {
     fn opcode() -> u8 {
         ATT_EXCHANGE_MTU_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let server_mtu = cursor.read_u16::<LittleEndian>()
+        let server_mtu = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         Ok(Self { server_mtu })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3);
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.server_mtu.to_le_bytes());
-        
+
         packet
     }
 }
@@ -341,32 +366,34 @@ impl AttPacket for FindInformationRequest {
     fn opcode() -> u8 {
         ATT_FIND_INFO_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 5 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let start_handle = cursor.read_u16::<LittleEndian>()
+        let start_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let end_handle = cursor.read_u16::<LittleEndian>()
+
+        let end_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         Ok(Self {
             start_handle,
             end_handle,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(5);
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.start_handle.to_le_bytes());
         packet.extend_from_slice(&self.end_handle.to_le_bytes());
-        
+
         packet
     }
 }
@@ -389,36 +416,7 @@ pub struct FindInformationResponse {
     pub information_data: Vec<HandleUuidPair>,
 }
 
-impl AttPacket for FindInformationResponse {
-    fn opcode() -> u8 {
-        ATT_FIND_INFO_RSP
-    }
-    
-    fn parse(data: &[u8]) -> AttResult<Self> {
-        if data.len() < 2 || data[0] != Self::opcode() {
-            return Err(AttError::InvalidPdu);
-        }
-        
-        let format = data[1];
-        let information_data = Self::parse_pairs(format, &data[2..])?;
-        
-        Ok(Self {
-            format,
-            information_data,
-        })
-    }
-    
-    fn serialize(&self) -> Vec<u8> {
-        let mut packet = Vec::new();
-        
-        packet.push(Self::opcode());
-        packet.push(self.format);
-        
-        packet.extend_from_slice(&Self::serialize_pairs(&self.information_data));
-        
-        packet
-    }
-
+impl FindInformationResponse {
     fn parse_pairs(format: u8, data: &[u8]) -> AttResult<Vec<HandleUuidPair>> {
         let mut information_data = Vec::new();
         let mut current_pos = 0;
@@ -434,10 +432,8 @@ impl AttPacket for FindInformationResponse {
             let pair_size = 18; // 2 handle + 16 UUID
             while current_pos + pair_size <= data.len() {
                 let handle = u16::from_le_bytes([data[current_pos], data[current_pos + 1]]);
-                let mut uuid_bytes = [0u8; 16];
-                uuid_bytes.copy_from_slice(&data[current_pos + 2..current_pos + 18]);
-                let uuid_opt = Uuid::from_bytes(&uuid_bytes);
-                let uuid = uuid_opt.ok_or(AttError::InvalidPdu)?;
+                let uuid = Uuid::try_from_slice_le(&data[current_pos + 2..current_pos + 18])
+                    .ok_or(AttError::InvalidPdu)?;
                 information_data.push(HandleUuidPair::Uuid128(handle, uuid));
                 current_pos += pair_size;
             }
@@ -446,32 +442,69 @@ impl AttPacket for FindInformationResponse {
         }
         Ok(information_data)
     }
-    
+
     fn serialize_pairs(pairs: &[HandleUuidPair]) -> Vec<u8> {
         let mut data = Vec::new();
-        if pairs.is_empty() { return data; }
+        if pairs.is_empty() {
+            return data;
+        }
 
         let format = match pairs[0] {
             HandleUuidPair::Uuid16(_, _) => ATT_FIND_INFO_RSP_FORMAT_16BIT,
             HandleUuidPair::Uuid128(_, _) => ATT_FIND_INFO_RSP_FORMAT_128BIT,
         };
-        data.push(format);
-
         for pair in pairs {
             match pair {
                 HandleUuidPair::Uuid16(handle, uuid16) => {
-                    if format != ATT_FIND_INFO_RSP_FORMAT_16BIT { continue; }
+                    if format != ATT_FIND_INFO_RSP_FORMAT_16BIT {
+                        continue;
+                    }
                     data.extend_from_slice(&handle.to_le_bytes());
                     data.extend_from_slice(&uuid16.to_le_bytes());
                 }
                 HandleUuidPair::Uuid128(handle, ref uuid) => {
-                    if format != ATT_FIND_INFO_RSP_FORMAT_128BIT { continue; }
+                    if format != ATT_FIND_INFO_RSP_FORMAT_128BIT {
+                        continue;
+                    }
                     data.extend_from_slice(&handle.to_le_bytes());
-                    data.extend_from_slice(&uuid.as_bytes()); 
+                    data.extend_from_slice(uuid.as_bytes_le());
                 }
             }
         }
         data
+    }
+}
+
+impl AttPacket for FindInformationResponse {
+    fn opcode() -> u8 {
+        ATT_FIND_INFO_RSP
+    }
+
+    fn parse(data: &[u8]) -> AttResult<Self> {
+        if data.len() < 2 || data[0] != Self::opcode() {
+            return Err(AttError::InvalidPdu);
+        }
+
+        let format = data[1];
+        let information_data = FindInformationResponse::parse_pairs(format, &data[2..])?;
+
+        Ok(Self {
+            format,
+            information_data,
+        })
+    }
+
+    fn serialize(&self) -> Vec<u8> {
+        let mut packet = Vec::new();
+
+        packet.push(Self::opcode());
+        packet.push(self.format);
+
+        packet.extend_from_slice(&FindInformationResponse::serialize_pairs(
+            &self.information_data,
+        ));
+
+        packet
     }
 }
 
@@ -492,24 +525,27 @@ impl AttPacket for FindByTypeValueRequest {
     fn opcode() -> u8 {
         ATT_FIND_BY_TYPE_VALUE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 7 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let start_handle = cursor.read_u16::<LittleEndian>()
+        let start_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let end_handle = cursor.read_u16::<LittleEndian>()
+
+        let end_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let attribute_type = cursor.read_u16::<LittleEndian>()
+
+        let attribute_type = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let attribute_value = data[7..].to_vec();
-        
+
         Ok(Self {
             start_handle,
             end_handle,
@@ -517,16 +553,16 @@ impl AttPacket for FindByTypeValueRequest {
             attribute_value,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(7 + self.attribute_value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.start_handle.to_le_bytes());
         packet.extend_from_slice(&self.end_handle.to_le_bytes());
         packet.extend_from_slice(&self.attribute_type.to_le_bytes());
         packet.extend_from_slice(&self.attribute_value);
-        
+
         packet
     }
 }
@@ -551,44 +587,46 @@ impl AttPacket for FindByTypeValueResponse {
     fn opcode() -> u8 {
         ATT_FIND_BY_TYPE_VALUE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut handles = Vec::new();
         let mut offset = 1;
-        
+
         while offset + 4 <= data.len() {
             let mut cursor = Cursor::new(&data[offset..]);
-            let found_handle = cursor.read_u16::<LittleEndian>()
+            let found_handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
-            let group_end_handle = cursor.read_u16::<LittleEndian>()
+
+            let group_end_handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
+
             handles.push(HandleRange {
                 found_handle,
                 group_end_handle,
             });
-            
+
             offset += 4;
         }
-        
+
         Ok(Self { handles })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(1 + self.handles.len() * 4);
-        
+
         packet.push(Self::opcode());
-        
+
         for range in &self.handles {
             packet.extend_from_slice(&range.found_handle.to_le_bytes());
             packet.extend_from_slice(&range.group_end_handle.to_le_bytes());
         }
-        
+
         packet
     }
 }
@@ -604,62 +642,48 @@ pub struct ReadByTypeRequest {
     pub attribute_type: Uuid,
 }
 
+impl ReadByTypeRequest {
+    fn parse_attribute_type(data: &[u8]) -> AttResult<Uuid> {
+        Uuid::try_from_slice_le(data).ok_or(AttError::InvalidPdu)
+    }
+    fn serialize_attribute_type(&self) -> Vec<u8> {
+        if let Some(u16_val) = self.attribute_type.as_u16() {
+            u16_val.to_le_bytes().to_vec()
+        } else {
+            self.attribute_type.as_bytes_le().to_vec()
+        }
+    }
+}
+
 impl AttPacket for ReadByTypeRequest {
     fn opcode() -> u8 {
         ATT_READ_BY_TYPE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
-        if data.len() < 7 || data[0] != Self::opcode() {
+        if data.len() < 7 {
             return Err(AttError::InvalidPdu);
         }
-        
         let mut cursor = Cursor::new(&data[1..]);
-        let start_handle = cursor.read_u16::<LittleEndian>()
+        let start_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let end_handle = cursor.read_u16::<LittleEndian>()
+        let end_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        // Check attribute type UUID format
-        let attribute_type = if data.len() == 7 {
-            // 16-bit UUID
-            let mut cursor = Cursor::new(&data[5..]);
-            let uuid16 = cursor.read_u16::<LittleEndian>()
-                .map_err(|_| AttError::InvalidPdu)?;
-                
-            Uuid::from_u16(uuid16)
-        } else if data.len() == 21 {
-            // 128-bit UUID
-            let mut uuid_bytes = [0u8; 16];
-            uuid_bytes.copy_from_slice(&data[5..21]);
-            Uuid::from_bytes(uuid_bytes)
-        } else {
-            return Err(AttError::InvalidPdu);
-        };
-        
+        let attribute_type = ReadByTypeRequest::parse_attribute_type(&data[5..])?;
         Ok(Self {
             start_handle,
             end_handle,
             attribute_type,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
-        let mut packet = Vec::new();
-        
-        packet.push(Self::opcode());
+        let mut packet = vec![Self::opcode()];
         packet.extend_from_slice(&self.start_handle.to_le_bytes());
         packet.extend_from_slice(&self.end_handle.to_le_bytes());
-        
-        if let Some(uuid16) = self.attribute_type.as_u16() {
-            // 16-bit UUID
-            packet.extend_from_slice(&uuid16.to_le_bytes());
-        } else {
-            // 128-bit UUID
-            packet.extend_from_slice(self.attribute_type.as_bytes());
-        }
-        
+        packet.extend_from_slice(&self.serialize_attribute_type());
         packet
     }
 }
@@ -686,53 +710,51 @@ impl AttPacket for ReadByTypeResponse {
     fn opcode() -> u8 {
         ATT_READ_BY_TYPE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 2 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let length = data[1];
         if length < 2 {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut data_list = Vec::new();
         let mut offset = 2;
-        
+
         while offset + length as usize <= data.len() {
             let mut cursor = Cursor::new(&data[offset..]);
-            let handle = cursor.read_u16::<LittleEndian>()
+            let handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
+
             let _value_size = length as usize - 2;
             let value = data[offset + 2..offset + length as usize].to_vec();
-            
-            data_list.push(HandleValue {
-                handle,
-                value,
-            });
-            
+
+            data_list.push(HandleValue { handle, value });
+
             offset += length as usize;
         }
-        
+
         Ok(Self {
             length,
             data: data_list,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::new();
-        
+
         packet.push(Self::opcode());
         packet.push(self.length);
-        
+
         for item in &self.data {
             packet.extend_from_slice(&item.handle.to_le_bytes());
             packet.extend_from_slice(&item.value);
         }
-        
+
         packet
     }
 }
@@ -748,25 +770,26 @@ impl AttPacket for ReadRequest {
     fn opcode() -> u8 {
         ATT_READ_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         Ok(Self { handle })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3);
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
-        
+
         packet
     }
 }
@@ -782,23 +805,23 @@ impl AttPacket for ReadResponse {
     fn opcode() -> u8 {
         ATT_READ_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let value = data[1..].to_vec();
-        
+
         Ok(Self { value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(1 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -816,32 +839,31 @@ impl AttPacket for ReadBlobRequest {
     fn opcode() -> u8 {
         ATT_READ_BLOB_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 5 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let offset = cursor.read_u16::<LittleEndian>()
+
+        let offset = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        Ok(Self {
-            handle,
-            offset,
-        })
+
+        Ok(Self { handle, offset })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(5);
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.offset.to_le_bytes());
-        
+
         packet
     }
 }
@@ -857,23 +879,23 @@ impl AttPacket for ReadBlobResponse {
     fn opcode() -> u8 {
         ATT_READ_BLOB_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let value = data[1..].to_vec();
-        
+
         Ok(Self { value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(1 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -889,36 +911,37 @@ impl AttPacket for ReadMultipleRequest {
     fn opcode() -> u8 {
         ATT_READ_MULTIPLE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() || (data.len() - 1) % 2 != 0 {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut handles = Vec::new();
         let mut offset = 1;
-        
+
         while offset + 2 <= data.len() {
             let mut cursor = Cursor::new(&data[offset..]);
-            let handle = cursor.read_u16::<LittleEndian>()
+            let handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
+
             handles.push(handle);
             offset += 2;
         }
-        
+
         Ok(Self { handles })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(1 + self.handles.len() * 2);
-        
+
         packet.push(Self::opcode());
-        
+
         for handle in &self.handles {
             packet.extend_from_slice(&handle.to_le_bytes());
         }
-        
+
         packet
     }
 }
@@ -934,23 +957,23 @@ impl AttPacket for ReadMultipleResponse {
     fn opcode() -> u8 {
         ATT_READ_MULTIPLE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let values = data[1..].to_vec();
-        
+
         Ok(Self { values })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(1 + self.values.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.values);
-        
+
         packet
     }
 }
@@ -966,62 +989,48 @@ pub struct ReadByGroupTypeRequest {
     pub group_type: Uuid,
 }
 
+impl ReadByGroupTypeRequest {
+    fn parse_group_type(data: &[u8]) -> AttResult<Uuid> {
+        Uuid::try_from_slice_le(data).ok_or(AttError::InvalidPdu)
+    }
+    fn serialize_group_type(&self) -> Vec<u8> {
+        if let Some(u16_val) = self.group_type.as_u16() {
+            u16_val.to_le_bytes().to_vec()
+        } else {
+            self.group_type.as_bytes_le().to_vec()
+        }
+    }
+}
+
 impl AttPacket for ReadByGroupTypeRequest {
     fn opcode() -> u8 {
         ATT_READ_BY_GROUP_TYPE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
-        if data.len() < 7 || data[0] != Self::opcode() {
+        if data.len() < 7 {
             return Err(AttError::InvalidPdu);
         }
-        
         let mut cursor = Cursor::new(&data[1..]);
-        let start_handle = cursor.read_u16::<LittleEndian>()
+        let start_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let end_handle = cursor.read_u16::<LittleEndian>()
+        let end_handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        // Check group type UUID format
-        let group_type = if data.len() == 7 {
-            // 16-bit UUID
-            let mut cursor = Cursor::new(&data[5..]);
-            let uuid16 = cursor.read_u16::<LittleEndian>()
-                .map_err(|_| AttError::InvalidPdu)?;
-                
-            Uuid::from_u16(uuid16)
-        } else if data.len() == 21 {
-            // 128-bit UUID
-            let mut uuid_bytes = [0u8; 16];
-            uuid_bytes.copy_from_slice(&data[5..21]);
-            Uuid::from_bytes(uuid_bytes)
-        } else {
-            return Err(AttError::InvalidPdu);
-        };
-        
+        let group_type = ReadByGroupTypeRequest::parse_group_type(&data[5..])?;
         Ok(Self {
             start_handle,
             end_handle,
             group_type,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
-        let mut packet = Vec::new();
-        
-        packet.push(Self::opcode());
+        let mut packet = vec![Self::opcode()];
         packet.extend_from_slice(&self.start_handle.to_le_bytes());
         packet.extend_from_slice(&self.end_handle.to_le_bytes());
-        
-        if let Some(uuid16) = self.group_type.as_u16() {
-            // 16-bit UUID
-            packet.extend_from_slice(&uuid16.to_le_bytes());
-        } else {
-            // 128-bit UUID
-            packet.extend_from_slice(self.group_type.as_bytes());
-        }
-        
+        packet.extend_from_slice(&self.serialize_group_type());
         packet
     }
 }
@@ -1050,58 +1059,60 @@ impl AttPacket for ReadByGroupTypeResponse {
     fn opcode() -> u8 {
         ATT_READ_BY_GROUP_TYPE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 2 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let length = data[1];
         if length < 6 {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut data_list = Vec::new();
         let mut offset = 2;
-        
+
         while offset + length as usize <= data.len() {
             let mut cursor = Cursor::new(&data[offset..]);
-            let handle = cursor.read_u16::<LittleEndian>()
+            let handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
-            let end_group_handle = cursor.read_u16::<LittleEndian>()
+
+            let end_group_handle = cursor
+                .read_u16::<LittleEndian>()
                 .map_err(|_| AttError::InvalidPdu)?;
-                
+
             let _value_size = length as usize - 4;
             let value = data[offset + 4..offset + length as usize].to_vec();
-            
+
             data_list.push(AttributeData {
                 handle,
                 end_group_handle,
                 value,
             });
-            
+
             offset += length as usize;
         }
-        
+
         Ok(Self {
             length,
             data: data_list,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::new();
-        
+
         packet.push(Self::opcode());
         packet.push(self.length);
-        
+
         for item in &self.data {
             packet.extend_from_slice(&item.handle.to_le_bytes());
             packet.extend_from_slice(&item.end_group_handle.to_le_bytes());
             packet.extend_from_slice(&item.value);
         }
-        
+
         packet
     }
 }
@@ -1119,31 +1130,29 @@ impl AttPacket for WriteRequest {
     fn opcode() -> u8 {
         ATT_WRITE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[3..].to_vec();
-        
-        Ok(Self {
-            handle,
-            value,
-        })
+
+        Ok(Self { handle, value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1156,15 +1165,15 @@ impl AttPacket for WriteResponse {
     fn opcode() -> u8 {
         ATT_WRITE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         Ok(Self)
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         vec![Self::opcode()]
     }
@@ -1183,31 +1192,29 @@ impl AttPacket for WriteCommand {
     fn opcode() -> u8 {
         ATT_WRITE_CMD
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[3..].to_vec();
-        
-        Ok(Self {
-            handle,
-            value,
-        })
+
+        Ok(Self { handle, value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1227,36 +1234,38 @@ impl AttPacket for PrepareWriteRequest {
     fn opcode() -> u8 {
         ATT_PREPARE_WRITE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 5 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let offset = cursor.read_u16::<LittleEndian>()
+
+        let offset = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[5..].to_vec();
-        
+
         Ok(Self {
             handle,
             offset,
             value,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(5 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.offset.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1276,36 +1285,38 @@ impl AttPacket for PrepareWriteResponse {
     fn opcode() -> u8 {
         ATT_PREPARE_WRITE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 5 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
-        let offset = cursor.read_u16::<LittleEndian>()
+
+        let offset = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[5..].to_vec();
-        
+
         Ok(Self {
             handle,
             offset,
             value,
         })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(5 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.offset.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1321,23 +1332,23 @@ impl AttPacket for ExecuteWriteRequest {
     fn opcode() -> u8 {
         ATT_EXECUTE_WRITE_REQ
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 2 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let flags = data[1];
-        
+
         Ok(Self { flags })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(2);
-        
+
         packet.push(Self::opcode());
         packet.push(self.flags);
-        
+
         packet
     }
 }
@@ -1350,15 +1361,15 @@ impl AttPacket for ExecuteWriteResponse {
     fn opcode() -> u8 {
         ATT_EXECUTE_WRITE_RSP
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         Ok(Self)
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         vec![Self::opcode()]
     }
@@ -1377,31 +1388,29 @@ impl AttPacket for HandleValueNotification {
     fn opcode() -> u8 {
         ATT_HANDLE_VALUE_NTF
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[3..].to_vec();
-        
-        Ok(Self {
-            handle,
-            value,
-        })
+
+        Ok(Self { handle, value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1419,31 +1428,29 @@ impl AttPacket for HandleValueIndication {
     fn opcode() -> u8 {
         ATT_HANDLE_VALUE_IND
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 3 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         let mut cursor = Cursor::new(&data[1..]);
-        let handle = cursor.read_u16::<LittleEndian>()
+        let handle = cursor
+            .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
-            
+
         let value = data[3..].to_vec();
-        
-        Ok(Self {
-            handle,
-            value,
-        })
+
+        Ok(Self { handle, value })
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         let mut packet = Vec::with_capacity(3 + self.value.len());
-        
+
         packet.push(Self::opcode());
         packet.extend_from_slice(&self.handle.to_le_bytes());
         packet.extend_from_slice(&self.value);
-        
+
         packet
     }
 }
@@ -1456,15 +1463,15 @@ impl AttPacket for HandleValueConfirmation {
     fn opcode() -> u8 {
         ATT_HANDLE_VALUE_CONF
     }
-    
+
     fn parse(data: &[u8]) -> AttResult<Self> {
         if data.len() < 1 || data[0] != Self::opcode() {
             return Err(AttError::InvalidPdu);
         }
-        
+
         Ok(Self)
     }
-    
+
     fn serialize(&self) -> Vec<u8> {
         vec![Self::opcode()]
     }
@@ -1475,9 +1482,9 @@ pub fn parse_att_packet(data: &[u8]) -> AttResult<(u8, Vec<u8>)> {
     if data.is_empty() {
         return Err(AttError::InvalidPdu);
     }
-    
+
     let opcode = data[0];
     let packet_data = data.to_vec();
-    
+
     Ok((opcode, packet_data))
 }

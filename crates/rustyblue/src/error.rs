@@ -9,7 +9,7 @@ use thiserror::Error;
 pub enum HciError {
     #[error("Failed to open HCI socket: {0}")]
     SocketError(#[from] std::io::Error),
-    
+
     #[error("Failed to bind to HCI device: {0}")]
     BindError(std::io::Error),
 
@@ -34,25 +34,25 @@ pub enum HciError {
 pub enum Error {
     #[error("HCI error: {0}")]
     Hci(#[from] HciError),
-    
+
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Not connected")]
     NotConnected,
-    
+
     #[error("Feature not implemented: {0}")]
     NotImplemented(String),
-    
+
     #[error("Invalid packet: {0}")]
     InvalidPacket(String),
-    
+
     #[error("Service discovery failed: {0}")]
     ServiceDiscoveryFailed(String),
-    
+
     #[error("Protocol error: {0}")]
     ProtocolError(String),
-    
+
     #[error("Operation timeout")]
     Timeout,
 }

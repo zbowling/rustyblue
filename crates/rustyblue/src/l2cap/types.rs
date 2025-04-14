@@ -10,46 +10,46 @@ use thiserror::Error;
 pub enum L2capError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
-    
+
     #[error("Protocol error: {0}")]
     ProtocolError(String),
-    
+
     #[error("Connection timeout")]
     Timeout,
-    
+
     #[error("Remote device rejected connection: {0}")]
     ConnectionRejected(u16),
-    
+
     #[error("Channel not found")]
     ChannelNotFound,
-    
+
     #[error("Operation not supported")]
     NotSupported,
-    
+
     #[error("Invalid state for operation")]
     InvalidState,
-    
+
     #[error("MTU exceeded")]
     MtuExceeded,
-    
+
     #[error("Resource limit reached")]
     ResourceLimitReached,
-    
+
     #[error("PSM not registered")]
     PsmNotRegistered,
-    
+
     #[error("Security requirements not met")]
     SecurityRequirementsNotMet,
-    
+
     #[error("Connection terminated")]
     ConnectionTerminated,
-    
+
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("HCI error: {0}")]
     HciError(#[from] crate::error::HciError),
-    
+
     #[error("Connection not established")]
     NotConnected,
 }
@@ -241,17 +241,18 @@ impl ConnectionParameterUpdate {
         let interval_ok = self.conn_interval_min >= super::constants::L2CAP_LE_CONN_INTERVAL_MIN
             && self.conn_interval_max <= super::constants::L2CAP_LE_CONN_INTERVAL_MAX
             && self.conn_interval_min <= self.conn_interval_max;
-            
+
         let latency_ok = self.conn_latency <= super::constants::L2CAP_LE_CONN_LATENCY_MAX;
-        
-        let timeout_ok = self.supervision_timeout >= super::constants::L2CAP_LE_SUPERVISION_TIMEOUT_MIN
+
+        let timeout_ok = self.supervision_timeout
+            >= super::constants::L2CAP_LE_SUPERVISION_TIMEOUT_MIN
             && self.supervision_timeout <= super::constants::L2CAP_LE_SUPERVISION_TIMEOUT_MAX;
-            
+
         // Check the relationship between parameters
         // Supervision timeout must be larger than max interval * (latency + 1) * 2
-        let relation_ok = (self.supervision_timeout as u32) > 
-            ((self.conn_interval_max as u32) * (self.conn_latency as u32 + 1) * 2) / 10;
-            
+        let relation_ok = (self.supervision_timeout as u32)
+            > ((self.conn_interval_max as u32) * (self.conn_latency as u32 + 1) * 2) / 10;
+
         interval_ok && latency_ok && timeout_ok && relation_ok
     }
 }

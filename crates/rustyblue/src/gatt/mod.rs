@@ -10,6 +10,6 @@ pub mod types;
 #[cfg(test)]
 mod tests;
 
-pub use client::{GattClient, GattError, ConnectionState};
+pub use client::{ConnectionState, GattClient, GattError};
 pub use server::{GattServer, GattServerConfig, GattService};
-pub use types::{Service, Characteristic, CharacteristicProperty, Uuid};
+pub use types::{Characteristic, CharacteristicProperty, Service, Uuid};

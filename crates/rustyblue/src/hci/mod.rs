@@ -11,5 +11,5 @@ pub mod socket;
 #[cfg(test)]
 mod tests;
 
-pub use socket::HciSocket;
 pub use packet::{HciCommand, HciEvent, LeAdvertisingReport};
+pub use socket::HciSocket;

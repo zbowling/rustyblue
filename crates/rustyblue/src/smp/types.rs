@@ -1,86 +1,86 @@
 //! Type definitions for the Security Manager Protocol
+use crate::gap::BdAddr;
 use std::fmt;
 use thiserror::Error;
-use crate::gap::BdAddr;
 
 /// SMP Error types
 #[derive(Debug, Clone, Error)]
 pub enum SmpError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
-    
+
     #[error("Pairing failed: {0}")]
     PairingFailed(String),
-    
+
     #[error("Insufficient security level")]
     InsufficientSecurity,
-    
+
     #[error("Passkey entry failed")]
     PasskeyEntryFailed,
-    
+
     #[error("OOB data not available")]
     OobNotAvailable,
-    
+
     #[error("Authentication requirements not met")]
     AuthenticationRequirements,
-    
+
     #[error("Confirm value failed")]
     ConfirmValueFailed,
-    
+
     #[error("Pairing not supported")]
     PairingNotSupported,
-    
+
     #[error("Encryption key size issue")]
     EncryptionKeySize,
-    
+
     #[error("Command not supported")]
     CommandNotSupported,
-    
+
     #[error("Unspecified reason")]
     UnspecifiedReason,
-    
+
     #[error("Too many pairing attempts")]
     RepeatedAttempts,
-    
+
     #[error("Invalid parameters")]
     InvalidParameters,
-    
+
     #[error("DHKey check failed")]
     DhKeyCheckFailed,
-    
+
     #[error("Numeric comparison failed")]
     NumericComparisonFailed,
-    
+
     #[error("BR/EDR pairing in progress")]
     BrEdrPairingInProgress,
-    
+
     #[error("Cross-transport key not allowed")]
     CrossTransportKeyNotAllowed,
-    
+
     #[error("Operation timeout")]
     Timeout,
-    
+
     #[error("User canceled operation")]
     UserCanceled,
-    
+
     #[error("IO error: {0}")]
     IoError(String),
-    
+
     #[error("Cryptographic error: {0}")]
     CryptoError(String),
-    
+
     #[error("Invalid state for operation")]
     InvalidState,
-    
+
     #[error("Not paired with device")]
     NotPaired,
-    
+
     #[error("HCI error: {0}")]
     HciError(String),
-    
+
     #[error("L2CAP error: {0}")]
     L2capError(String),
-    
+
     #[error("Connection not found")]
     ConnectionNotFound,
 }
@@ -114,15 +114,19 @@ impl IoCapability {
             IoCapability::KeyboardDisplay => super::constants::SMP_IO_CAPABILITY_KEYBOARD_DISPLAY,
         }
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Option<Self> {
         match value {
             super::constants::SMP_IO_CAPABILITY_DISPLAY_ONLY => Some(IoCapability::DisplayOnly),
             super::constants::SMP_IO_CAPABILITY_DISPLAY_YES_NO => Some(IoCapability::DisplayYesNo),
             super::constants::SMP_IO_CAPABILITY_KEYBOARD_ONLY => Some(IoCapability::KeyboardOnly),
-            super::constants::SMP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT => Some(IoCapability::NoInputNoOutput),
-            super::constants::SMP_IO_CAPABILITY_KEYBOARD_DISPLAY => Some(IoCapability::KeyboardDisplay),
+            super::constants::SMP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT => {
+                Some(IoCapability::NoInputNoOutput)
+            }
+            super::constants::SMP_IO_CAPABILITY_KEYBOARD_DISPLAY => {
+                Some(IoCapability::KeyboardDisplay)
+            }
             _ => None,
         }
     }
@@ -159,17 +163,21 @@ impl PairingMethod {
         match self {
             PairingMethod::JustWorks => super::constants::SMP_PAIRING_METHOD_JUST_WORKS,
             PairingMethod::PasskeyEntry => super::constants::SMP_PAIRING_METHOD_PASSKEY_ENTRY,
-            PairingMethod::NumericComparison => super::constants::SMP_PAIRING_METHOD_NUMERIC_COMPARISON,
+            PairingMethod::NumericComparison => {
+                super::constants::SMP_PAIRING_METHOD_NUMERIC_COMPARISON
+            }
             PairingMethod::OutOfBand => super::constants::SMP_PAIRING_METHOD_OOB,
         }
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Option<Self> {
         match value {
             super::constants::SMP_PAIRING_METHOD_JUST_WORKS => Some(PairingMethod::JustWorks),
             super::constants::SMP_PAIRING_METHOD_PASSKEY_ENTRY => Some(PairingMethod::PasskeyEntry),
-            super::constants::SMP_PAIRING_METHOD_NUMERIC_COMPARISON => Some(PairingMethod::NumericComparison),
+            super::constants::SMP_PAIRING_METHOD_NUMERIC_COMPARISON => {
+                Some(PairingMethod::NumericComparison)
+            }
             super::constants::SMP_PAIRING_METHOD_OOB => Some(PairingMethod::OutOfBand),
             _ => None,
         }
@@ -213,7 +221,7 @@ impl AuthRequirements {
             ct2: false,
         }
     }
-    
+
     /// Create with default values (bonding enabled, others disabled)
     pub fn default() -> Self {
         Self {
@@ -224,7 +232,7 @@ impl AuthRequirements {
             ct2: false,
         }
     }
-    
+
     /// Create with secure connections
     pub fn secure() -> Self {
         Self {
@@ -235,34 +243,34 @@ impl AuthRequirements {
             ct2: false,
         }
     }
-    
+
     /// Convert to u8 value for protocol
     pub fn to_u8(&self) -> u8 {
         let mut value = 0;
-        
+
         if self.bonding {
             value |= super::constants::SMP_AUTH_REQ_BONDING;
         }
-        
+
         if self.mitm {
             value |= super::constants::SMP_AUTH_REQ_MITM;
         }
-        
+
         if self.secure_connections {
             value |= super::constants::SMP_AUTH_REQ_SC;
         }
-        
+
         if self.keypress_notifications {
             value |= super::constants::SMP_AUTH_REQ_KEYPRESS;
         }
-        
+
         if self.ct2 {
             value |= super::constants::SMP_AUTH_REQ_CT2;
         }
-        
+
         value
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Self {
         Self {
@@ -290,7 +298,12 @@ pub struct KeyDistribution {
 
 impl KeyDistribution {
     /// Create new key distribution preferences
-    pub fn new(encryption_key: bool, identity_key: bool, signing_key: bool, link_key: bool) -> Self {
+    pub fn new(
+        encryption_key: bool,
+        identity_key: bool,
+        signing_key: bool,
+        link_key: bool,
+    ) -> Self {
         Self {
             encryption_key,
             identity_key,
@@ -298,7 +311,7 @@ impl KeyDistribution {
             link_key,
         }
     }
-    
+
     /// Create with default values (all keys distributed)
     pub fn all() -> Self {
         Self {
@@ -308,7 +321,7 @@ impl KeyDistribution {
             link_key: false, // Link key is rarely used for LE
         }
     }
-    
+
     /// Create with all keys disabled
     pub fn none() -> Self {
         Self {
@@ -318,30 +331,30 @@ impl KeyDistribution {
             link_key: false,
         }
     }
-    
+
     /// Convert to u8 value for protocol
     pub fn to_u8(&self) -> u8 {
         let mut value = 0;
-        
+
         if self.encryption_key {
             value |= super::constants::SMP_KEY_DIST_ENC_KEY;
         }
-        
+
         if self.identity_key {
             value |= super::constants::SMP_KEY_DIST_ID_KEY;
         }
-        
+
         if self.signing_key {
             value |= super::constants::SMP_KEY_DIST_SIGN_KEY;
         }
-        
+
         if self.link_key {
             value |= super::constants::SMP_KEY_DIST_LINK_KEY;
         }
-        
+
         value
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Self {
         Self {
@@ -427,7 +440,7 @@ impl TransportType {
             TransportType::BrEdr => super::constants::SMP_TRANSPORT_BR_EDR,
         }
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Option<Self> {
         match value {
@@ -485,12 +498,12 @@ impl SecurityLevel {
     pub fn is_encrypted(&self) -> bool {
         *self >= SecurityLevel::EncryptionOnly
     }
-    
+
     /// Check if this security level includes authentication
     pub fn is_authenticated(&self) -> bool {
         *self >= SecurityLevel::EncryptionWithAuthentication
     }
-    
+
     /// Check if this security level uses Secure Connections
     pub fn is_secure_connections(&self) -> bool {
         *self >= SecurityLevel::SecureConnections
@@ -520,18 +533,28 @@ impl KeypressNotificationType {
             KeypressNotificationType::DigitEntered => super::constants::SMP_KEYPRESS_DIGIT_ENTERED,
             KeypressNotificationType::DigitErased => super::constants::SMP_KEYPRESS_DIGIT_ERASED,
             KeypressNotificationType::Cleared => super::constants::SMP_KEYPRESS_CLEARED,
-            KeypressNotificationType::EntryCompleted => super::constants::SMP_KEYPRESS_ENTRY_COMPLETED,
+            KeypressNotificationType::EntryCompleted => {
+                super::constants::SMP_KEYPRESS_ENTRY_COMPLETED
+            }
         }
     }
-    
+
     /// Convert from u8 value from protocol
     pub fn from_u8(value: u8) -> Option<Self> {
         match value {
-            super::constants::SMP_KEYPRESS_ENTRY_STARTED => Some(KeypressNotificationType::EntryStarted),
-            super::constants::SMP_KEYPRESS_DIGIT_ENTERED => Some(KeypressNotificationType::DigitEntered),
-            super::constants::SMP_KEYPRESS_DIGIT_ERASED => Some(KeypressNotificationType::DigitErased),
+            super::constants::SMP_KEYPRESS_ENTRY_STARTED => {
+                Some(KeypressNotificationType::EntryStarted)
+            }
+            super::constants::SMP_KEYPRESS_DIGIT_ENTERED => {
+                Some(KeypressNotificationType::DigitEntered)
+            }
+            super::constants::SMP_KEYPRESS_DIGIT_ERASED => {
+                Some(KeypressNotificationType::DigitErased)
+            }
             super::constants::SMP_KEYPRESS_CLEARED => Some(KeypressNotificationType::Cleared),
-            super::constants::SMP_KEYPRESS_ENTRY_COMPLETED => Some(KeypressNotificationType::EntryCompleted),
+            super::constants::SMP_KEYPRESS_ENTRY_COMPLETED => {
+                Some(KeypressNotificationType::EntryCompleted)
+            }
             _ => None,
         }
     }

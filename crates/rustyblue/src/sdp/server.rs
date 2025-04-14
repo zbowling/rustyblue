@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::sdp::protocol::SdpPacket;
-use crate::sdp::types::{ServiceRecord, SdpPdu, Uuid, DataElement};
+use crate::sdp::types::{DataElement, SdpPdu, ServiceRecord, Uuid};
 use std::collections::HashMap;
 
 pub struct SdpServer {
@@ -19,7 +19,7 @@ impl SdpServer {
     pub fn register_service(&mut self, service: ServiceRecord) -> u32 {
         let handle = self.next_handle;
         self.next_handle += 1;
-        
+
         self.service_records.insert(handle, service);
         handle
     }
@@ -40,48 +40,60 @@ impl SdpServer {
     fn handle_service_search(&self, request: &SdpPacket) -> Result<SdpPacket, Error> {
         // TODO: Implement service search handler
         // Parse UUIDs from request, look up matching services, send handles back
-        
+
         // Placeholder response
         let parameters = vec![0, 0, 0, 0, 0]; // Empty response with zeros
-        Ok(SdpPacket::new(SdpPdu::ServiceSearchResponse, request.transaction_id, parameters))
+        Ok(SdpPacket::new(
+            SdpPdu::ServiceSearchResponse,
+            request.transaction_id,
+            parameters,
+        ))
     }
 
     fn handle_service_attribute(&self, request: &SdpPacket) -> Result<SdpPacket, Error> {
         // TODO: Implement service attribute handler
         // Parse service handle and attribute IDs, return requested attributes
-        
+
         // Placeholder response
         let parameters = vec![0, 0, 0]; // Empty response with zeros
-        Ok(SdpPacket::new(SdpPdu::ServiceAttributeResponse, request.transaction_id, parameters))
+        Ok(SdpPacket::new(
+            SdpPdu::ServiceAttributeResponse,
+            request.transaction_id,
+            parameters,
+        ))
     }
 
     fn handle_service_search_attribute(&self, request: &SdpPacket) -> Result<SdpPacket, Error> {
         // TODO: Implement service search attribute handler
         // Parse UUIDs and attribute IDs, find matching services, return attributes
-        
+
         // Placeholder response
         let parameters = vec![0, 0, 0]; // Empty response with zeros
-        Ok(SdpPacket::new(SdpPdu::ServiceSearchAttributeResponse, request.transaction_id, parameters))
+        Ok(SdpPacket::new(
+            SdpPdu::ServiceSearchAttributeResponse,
+            request.transaction_id,
+            parameters,
+        ))
     }
 
     fn find_matching_services(&self, uuids: &[Uuid]) -> Vec<u32> {
         let mut matching_handles = Vec::new();
-        
+
         for (handle, record) in &self.service_records {
             let mut matches = true;
-            
+
             for uuid in uuids {
                 if !record.service_class_id_list.contains(uuid) {
                     matches = false;
                     break;
                 }
             }
-            
+
             if matches {
                 matching_handles.push(*handle);
             }
         }
-        
+
         matching_handles
     }
 }

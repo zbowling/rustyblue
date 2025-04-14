@@ -91,8 +91,12 @@ impl fmt::Display for BdAddr {
         write!(
             f,
             "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            self.bytes[5], self.bytes[4], self.bytes[3],
-            self.bytes[2], self.bytes[1], self.bytes[0]
+            self.bytes[5],
+            self.bytes[4],
+            self.bytes[3],
+            self.bytes[2],
+            self.bytes[1],
+            self.bytes[0]
         )
     }
 }

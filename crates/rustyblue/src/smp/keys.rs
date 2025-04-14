@@ -26,7 +26,13 @@ pub struct LongTermKey {
 
 impl LongTermKey {
     /// Create a new Long Term Key
-    pub fn new(key: [u8; 16], ediv: u16, rand: [u8; 8], secure_connections: bool, authenticated: bool) -> Self {
+    pub fn new(
+        key: [u8; 16],
+        ediv: u16,
+        rand: [u8; 8],
+        secure_connections: bool,
+        authenticated: bool,
+    ) -> Self {
         Self {
             key,
             ediv,
@@ -35,7 +41,7 @@ impl LongTermKey {
             authenticated,
         }
     }
-    
+
     /// Create an LTK for Secure Connections
     pub fn new_secure_connections(key: [u8; 16], authenticated: bool) -> Self {
         Self {
@@ -46,7 +52,7 @@ impl LongTermKey {
             authenticated,
         }
     }
-    
+
     /// Get the security level provided by this key
     pub fn security_level(&self) -> SecurityLevel {
         if self.secure_connections {
@@ -101,7 +107,7 @@ impl ConnectionSignatureResolvingKey {
             authenticated,
         }
     }
-    
+
     /// Increment the signing counter
     pub fn increment_counter(&mut self) -> u32 {
         self.sign_counter += 1;
@@ -135,7 +141,7 @@ impl DeviceKeys {
             link_key: None,
         }
     }
-    
+
     /// Get the security level based on stored keys
     pub fn security_level(&self) -> SecurityLevel {
         if let Some(ltk) = &self.ltk {
@@ -144,11 +150,14 @@ impl DeviceKeys {
             SecurityLevel::None
         }
     }
-    
+
     /// Check if any keys are stored
     pub fn has_keys(&self) -> bool {
-        self.ltk.is_some() || self.irk.is_some() || self.local_csrk.is_some() || 
-        self.remote_csrk.is_some() || self.link_key.is_some()
+        self.ltk.is_some()
+            || self.irk.is_some()
+            || self.local_csrk.is_some()
+            || self.remote_csrk.is_some()
+            || self.link_key.is_some()
     }
 }
 
@@ -156,16 +165,16 @@ impl DeviceKeys {
 pub trait KeyStore {
     /// Save keys for a device
     fn save_keys(&mut self, address: &BdAddr, keys: &DeviceKeys) -> SmpResult<()>;
-    
+
     /// Load keys for a device
     fn load_keys(&self, address: &BdAddr) -> SmpResult<Option<DeviceKeys>>;
-    
+
     /// Delete keys for a device
     fn delete_keys(&mut self, address: &BdAddr) -> SmpResult<()>;
-    
+
     /// Look up device address by Identity Resolving Key
     fn resolve_identity(&self, random_address: &BdAddr) -> SmpResult<Option<BdAddr>>;
-    
+
     /// Get all paired devices
     fn get_paired_devices(&self) -> SmpResult<Vec<BdAddr>>;
 }
@@ -192,28 +201,28 @@ impl KeyStore for MemoryKeyStore {
         store.insert(*address, keys.clone());
         Ok(())
     }
-    
+
     fn load_keys(&self, address: &BdAddr) -> SmpResult<Option<DeviceKeys>> {
         let store = self.keys.read().unwrap();
         Ok(store.get(address).cloned())
     }
-    
+
     fn delete_keys(&mut self, address: &BdAddr) -> SmpResult<()> {
         let mut store = self.keys.write().unwrap();
         store.remove(address);
         Ok(())
     }
-    
+
     fn resolve_identity(&self, random_address: &BdAddr) -> SmpResult<Option<BdAddr>> {
         // This would actually perform the cryptographic resolution
         // For now we just do a simple lookup
         let store = self.keys.read().unwrap();
-        
+
         // In a real implementation, we would use the IRK to resolve random addresses
         // Here we're just returning None as a placeholder
         Ok(None)
     }
-    
+
     fn get_paired_devices(&self) -> SmpResult<Vec<BdAddr>> {
         let store = self.keys.read().unwrap();
         let devices = store.keys().cloned().collect();

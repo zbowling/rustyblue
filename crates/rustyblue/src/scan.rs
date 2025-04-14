@@ -2,10 +2,10 @@
 //!
 //! This module provides functions for scanning for Bluetooth LE devices.
 
-use std::time::Duration;
-use std::thread;
 use crate::error::HciError;
-use crate::hci::{HciSocket, HciCommand, LeAdvertisingReport};
+use crate::hci::{HciCommand, HciSocket, LeAdvertisingReport};
+use std::thread;
+use std::time::Duration;
 
 /// Scan for Bluetooth LE devices
 ///
@@ -68,20 +68,20 @@ where
 pub fn parse_advertising_data(data: &[u8]) -> Vec<(u8, Vec<u8>)> {
     let mut result = Vec::new();
     let mut i = 0;
-    
+
     while i < data.len() {
         let length = data[i] as usize;
         if length == 0 || i + length >= data.len() {
             break;
         }
-        
+
         let ad_type = data[i + 1];
         let ad_data = data[i + 2..i + 1 + length].to_vec();
-        
+
         result.push((ad_type, ad_data));
-        
+
         i += 1 + length;
     }
-    
+
     result
 }

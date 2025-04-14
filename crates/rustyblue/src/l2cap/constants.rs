@@ -1,8 +1,8 @@
 //! Constants used in the L2CAP protocol
 
 // L2CAP header sizes
-pub const L2CAP_BASIC_HEADER_SIZE: usize = 4;  // Length (2) + CID (2)
-pub const L2CAP_EXTENDED_HEADER_SIZE: usize = 6;  // Basic + Control (2)
+pub const L2CAP_BASIC_HEADER_SIZE: usize = 4; // Length (2) + CID (2)
+pub const L2CAP_EXTENDED_HEADER_SIZE: usize = 6; // Basic + Control (2)
 
 // L2CAP signaling command codes
 pub const L2CAP_COMMAND_REJECT: u8 = 0x01;

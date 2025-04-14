@@ -2,11 +2,11 @@
 //!
 //! This module manages PSM values for L2CAP connections.
 
-use std::sync::atomic::{AtomicU16, Ordering};
 use std::fmt;
+use std::sync::atomic::{AtomicU16, Ordering};
 
 /// Protocol/Service Multiplexer (PSM) values used in L2CAP.
-/// 
+///
 /// See Bluetooth Core Specification Vol 3, Part A, Section 4.
 /// And assigned numbers: https://www.bluetooth.com/specifications/assigned-numbers/logical-link-control/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,7 +39,7 @@ pub enum PSM {
     ATT = 0x001F,
     /// 3DSP protocol
     _3DSP = 0x0021,
-    
+
     // Dynamic PSM (assigned at runtime)
     /// Dynamically assigned PSM
     Dynamic(u16),
@@ -52,11 +52,11 @@ impl PSM {
             PSM::Dynamic(value) => {
                 // Dynamic PSMs must be odd and in the valid range
                 (*value % 2 == 1) && (*value >= 0x1001) && (*value <= 0xFFFF)
-            },
+            }
             _ => true, // All fixed PSMs are valid
         }
     }
-    
+
     /// Get the PSM value as u16
     pub fn value(&self) -> u16 {
         match self {
@@ -76,7 +76,7 @@ impl PSM {
             PSM::Dynamic(value) => *value,
         }
     }
-    
+
     /// Try to create a PSM from a u16 value
     pub fn from_value(value: u16) -> Option<Self> {
         match value {
@@ -94,9 +94,7 @@ impl PSM {
             0x001F => Some(PSM::ATT),
             0x0021 => Some(PSM::_3DSP),
             // Dynamic PSMs must be odd and in the dynamic range
-            _ if value % 2 == 1 && value >= 0x1001 && value <= 0xFFFF => {
-                Some(PSM::Dynamic(value))
-            },
+            _ if value % 2 == 1 && value >= 0x1001 && value <= 0xFFFF => Some(PSM::Dynamic(value)),
             _ => None,
         }
     }
@@ -133,12 +131,12 @@ static NEXT_DYNAMIC_PSM: AtomicU16 = AtomicU16::new(0x1001);
 pub fn obtain_dynamic_psm() -> PSM {
     // Get the next PSM, ensuring it's odd
     let mut next_psm = NEXT_DYNAMIC_PSM.fetch_add(2, Ordering::SeqCst);
-    
+
     // If we've wrapped around, reset to 0x1001
     if next_psm > 0xFFFF || next_psm < 0x1001 {
         next_psm = 0x1001;
         NEXT_DYNAMIC_PSM.store(0x1003, Ordering::SeqCst);
     }
-    
+
     PSM::Dynamic(next_psm)
 }

@@ -1,7 +1,7 @@
 //! Error handling for the ATT protocol
-use thiserror::Error;
-use crate::l2cap::L2capError;
 use super::constants::*;
+use crate::l2cap::L2capError;
+use thiserror::Error;
 
 /// ATT error codes as defined in the specification
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +69,9 @@ impl From<u8> for AttErrorCode {
             ATT_ERROR_PREPARE_QUEUE_FULL => AttErrorCode::PrepareQueueFull,
             ATT_ERROR_ATTRIBUTE_NOT_FOUND => AttErrorCode::AttributeNotFound,
             ATT_ERROR_ATTRIBUTE_NOT_LONG => AttErrorCode::AttributeNotLong,
-            ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE => AttErrorCode::InsufficientEncryptionKeySize,
+            ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE => {
+                AttErrorCode::InsufficientEncryptionKeySize
+            }
             ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH => AttErrorCode::InvalidAttributeValueLength,
             ATT_ERROR_UNLIKELY => AttErrorCode::Unlikely,
             ATT_ERROR_INSUFFICIENT_ENCRYPTION => AttErrorCode::InsufficientEncryption,
@@ -80,7 +82,9 @@ impl From<u8> for AttErrorCode {
             c if c >= ATT_ERROR_APPLICATION_ERROR_START && c <= ATT_ERROR_APPLICATION_ERROR_END => {
                 AttErrorCode::ApplicationError(c)
             }
-            c if c >= ATT_ERROR_COMMON_PROFILE_ERROR_START && c <= ATT_ERROR_COMMON_PROFILE_ERROR_END => {
+            c if c >= ATT_ERROR_COMMON_PROFILE_ERROR_START
+                && c <= ATT_ERROR_COMMON_PROFILE_ERROR_END =>
+            {
                 AttErrorCode::CommonProfileError(c)
             }
             _ => AttErrorCode::Unknown(code),
@@ -103,7 +107,9 @@ impl Into<u8> for AttErrorCode {
             AttErrorCode::PrepareQueueFull => ATT_ERROR_PREPARE_QUEUE_FULL,
             AttErrorCode::AttributeNotFound => ATT_ERROR_ATTRIBUTE_NOT_FOUND,
             AttErrorCode::AttributeNotLong => ATT_ERROR_ATTRIBUTE_NOT_LONG,
-            AttErrorCode::InsufficientEncryptionKeySize => ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE,
+            AttErrorCode::InsufficientEncryptionKeySize => {
+                ATT_ERROR_INSUFFICIENT_ENCRYPTION_KEY_SIZE
+            }
             AttErrorCode::InvalidAttributeValueLength => ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH,
             AttErrorCode::Unlikely => ATT_ERROR_UNLIKELY,
             AttErrorCode::InsufficientEncryption => ATT_ERROR_INSUFFICIENT_ENCRYPTION,
@@ -123,76 +129,76 @@ impl Into<u8> for AttErrorCode {
 pub enum AttError {
     #[error("ATT error: {0:?} on handle {1}")]
     Protocol(AttErrorCode, u16),
-    
+
     #[error("Attribute not found")]
     AttributeNotFound,
-    
+
     #[error("Read not permitted")]
     ReadNotPermitted,
-    
+
     #[error("Write not permitted")]
     WriteNotPermitted,
-    
+
     #[error("Invalid handle: {0}")]
     InvalidHandle(u16),
-    
+
     #[error("Invalid PDU")]
     InvalidPdu,
-    
+
     #[error("Invalid offset: {0}")]
     InvalidOffset(u16),
-    
+
     #[error("Invalid attribute value length")]
     InvalidAttributeValueLength,
-    
+
     #[error("Insufficient authentication")]
     InsufficientAuthentication,
-    
+
     #[error("Insufficient authorization")]
     InsufficientAuthorization,
-    
+
     #[error("Insufficient encryption key size")]
     InsufficientEncryptionKeySize,
-    
+
     #[error("Insufficient encryption")]
     InsufficientEncryption,
-    
+
     #[error("Attribute not long")]
     AttributeNotLong,
-    
+
     #[error("Prepare queue full")]
     PrepareQueueFull,
-    
+
     #[error("Unlikely error")]
     Unlikely,
-    
+
     #[error("Request not supported")]
     RequestNotSupported,
-    
+
     #[error("Unsupported group type")]
     UnsupportedGroupType,
-    
+
     #[error("Insufficient resources")]
     InsufficientResources,
-    
+
     #[error("Database out of sync")]
     DatabaseOutOfSync,
-    
+
     #[error("Value not allowed")]
     ValueNotAllowed,
-    
+
     #[error("Application error: {0}")]
     ApplicationError(u8),
-    
+
     #[error("L2CAP error: {0}")]
     L2capError(#[from] L2capError),
-    
+
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
-    
+
     #[error("Invalid state for operation")]
     InvalidState,
-    
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -222,7 +228,9 @@ impl From<AttErrorCode> for AttError {
             AttErrorCode::ValueNotAllowed => AttError::ValueNotAllowed,
             AttErrorCode::ApplicationError(code) => AttError::ApplicationError(code),
             AttErrorCode::CommonProfileError(code) => AttError::ApplicationError(code),
-            AttErrorCode::Unknown(code) => AttError::Unknown(format!("Unknown error code: {}", code)),
+            AttErrorCode::Unknown(code) => {
+                AttError::Unknown(format!("Unknown error code: {}", code))
+            }
         }
     }
 }
@@ -258,7 +266,7 @@ impl AttError {
             AttError::Unknown(_) => AttErrorCode::Unlikely,
         }
     }
-    
+
     /// Get the handle associated with this error, if any
     pub fn handle(&self) -> Option<u16> {
         match self {
