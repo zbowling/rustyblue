@@ -1,7 +1,10 @@
-> [!Warning]
-> This is a vibe coded Rust based Bluetooth stack. I'm AI engineer who knows Bluetooth haven't previously implemeneted a Bluetooth stack but I'm trying to write as little code as possible and refine tools for AI code generation.
-
 # RustyBlue
+
+> [!Warning]
+> This is a vibe coded Rust based Bluetooth stack. I'm an AI engineer who knows
+> Bluetooth. I've previously implemeneted a full Bluetooth BR/EDR stack but here I'm trying to write
+> as little of code as possible directly and rather refine tools for AI code generation to get to PTS
+> certification. This is a long term project.
 
 This is a Rust implementation of the Bluetooth protocol stack. Focusing on the HCI layer and the LE transport layer for now but will add support for the BR/EDR transport layer later.
 
@@ -9,34 +12,34 @@ Bluetooth specifications are in the specs folder
 
 ## Creates in crates folder
 
-* rustyblue is the core library
-* rustyblued is a TBD server to open the HCI socket and send/receive HCI commands/events
-* rustybluecli is a CLI to interact with rustyblued over IPC
+- rustyblue is the core library
+- rustyblued is a TBD server to open the HCI socket and send/receive HCI commands/events
+- rustybluecli is a CLI to interact with rustyblued over IPC
 
 The core library should be split into layers as per the Bluetooth Core Specification.
 
 We want to be able to break up the work into smaller chunks and tackle one layer at a time.
 
-* rustyblue/util/ is where we put utility functions like packet parsing/serialization
+- rustyblue/util/ is where we put utility functions like packet parsing/serialization
 
-* rustyblue/hci/ is the HCI layer
-  * socket.rs is where we define the HciSocket struct and methods
-  * packet.rs is where we define the HciPacket struct and methods
-  * event.rs is where we define the HciEvent struct and methods
-  * command.rs is where we define the HciCommand struct and methods
-  * acl.rs is where we define the HciAcl struct and methods
-  * sco.rs is where we define the HciSco struct and methods
-  * iso.rs is where we define the HciIso struct and methods
-* rustyblue/l2cap/ is the L2CAP layer
-* rustyblue/sdp/ is the SDP layer
-* rustyblue/rfcomm/ is the RFCOMM layer
-* rustyblue/ble/ is the BLE layer
-* rustyblue/gap/ is the GAP layer
-* rustyblue/gatt/ is the GATT layer
-* rustyblue/smp/ is the SMP layer
-* rustyblue/sdp/ is the SDP layer
+- rustyblue/hci/ is the HCI layer
+  - socket.rs is where we define the HciSocket struct and methods
+  - packet.rs is where we define the HciPacket struct and methods
+  - event.rs is where we define the HciEvent struct and methods
+  - command.rs is where we define the HciCommand struct and methods
+  - acl.rs is where we define the HciAcl struct and methods
+  - sco.rs is where we define the HciSco struct and methods
+  - iso.rs is where we define the HciIso struct and methods
+- rustyblue/l2cap/ is the L2CAP layer
+- rustyblue/sdp/ is the SDP layer
+- rustyblue/rfcomm/ is the RFCOMM layer
+- rustyblue/ble/ is the BLE layer
+- rustyblue/gap/ is the GAP layer
+- rustyblue/gatt/ is the GATT layer
+- rustyblue/smp/ is the SMP layer
+- rustyblue/sdp/ is the SDP layer
 
-Basic GATT server and client will be implemented in the core library. Bigger profiles we will implement in different crates to be implemented down the line. We will talk to these crates ideally over IPC at some point. 
+Basic GATT server and client will be implemented in the core library. Bigger profiles we will implement in different crates to be implemented down the line. We will talk to these crates ideally over IPC at some point.
 
 Error handling is done using the `thiserror` crate.
 
@@ -46,7 +49,7 @@ DO NOT ADVERTISE THIS AS WRITEN BY CLAUDE.
 
 - Build: `cargo build`
 - Run tests: `cargo test`
-- Run specific test: `cargo test test_name` 
+- Run specific test: `cargo test test_name`
 - The examples don't work yet but should compile.
 - Format code: `cargo fmt`
 - Check code style: `cargo clippy`
