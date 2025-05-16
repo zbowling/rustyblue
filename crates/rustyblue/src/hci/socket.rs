@@ -5,6 +5,7 @@
 
 use crate::error::HciError;
 use crate::hci::packet::{HciCommand, HciEvent};
+use crate::hci::acl::HciAcl;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::time::Duration;
 
@@ -158,6 +159,45 @@ impl HciSocket {
             -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
             _ => Ok(()),
         }
+    }
+
+    /// Send an ACL packet to the controller
+    pub fn send_acl(&self, packet: &HciAcl) -> Result<(), HciError> {
+        let bytes = packet.to_bytes();
+        match unsafe {
+            libc::write(
+                self.fd,
+                bytes.as_ptr() as *const libc::c_void,
+                bytes.len(),
+            )
+        } {
+            -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
+            _ => Ok(()),
+        }
+    }
+
+    /// Read an ACL packet from the socket
+    pub fn read_acl(&self) -> Result<HciAcl, HciError> {
+        let mut buffer = [0u8; 1028]; // ACL packets can be larger than events
+
+        let bytes_read = unsafe {
+            libc::read(
+                self.fd,
+                buffer.as_mut_ptr() as *mut libc::c_void,
+                buffer.len(),
+            )
+        };
+
+        if bytes_read < 0 {
+            return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+        }
+
+        if bytes_read < 5 || buffer[0] != crate::hci::constants::HCI_ACL_PKT {
+            return Err(HciError::InvalidPacketFormat);
+        }
+
+        HciAcl::parse(&buffer[1..bytes_read as usize])
+            .ok_or(HciError::InvalidPacketFormat)
     }
 }
 

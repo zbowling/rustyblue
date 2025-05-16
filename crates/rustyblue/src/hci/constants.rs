@@ -20,6 +20,13 @@ pub const OGF_INFO_PARAM: u8 = 0x04;
 pub const OGF_STATUS_PARAM: u8 = 0x05;
 pub const OGF_LE: u8 = 0x08;
 
+// Informational Parameters Commands (OGF: 0x04)
+pub const OCF_READ_LOCAL_VERSION_INFORMATION: u16 = 0x0001;
+pub const OCF_READ_LOCAL_SUPPORTED_COMMANDS: u16 = 0x0002;
+pub const OCF_READ_LOCAL_SUPPORTED_FEATURES: u16 = 0x0003;
+pub const OCF_READ_BUFFER_SIZE: u16 = 0x0005;
+pub const OCF_READ_BD_ADDR: u16 = 0x0009;
+
 // Link Control Commands (OGF: 0x01)
 pub const OCF_INQUIRY: u16 = 0x0001;
 pub const OCF_INQUIRY_CANCEL: u16 = 0x0002;

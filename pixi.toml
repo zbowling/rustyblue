@@ -1,0 +1,14 @@
+[project]
+authors = ["Zac Bowling <zac@zacbowling.com>"]
+channels = ["conda-forge"]
+name = "rustyblue"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = ">=3.13.3,<3.14"
+
+[pypi-dependencies]
+autogenstudio = ">=0.4.2.1, <0.5"

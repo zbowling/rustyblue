@@ -43,6 +43,13 @@ pub enum HciCommand {
         event_mask: u64,
     },
 
+    // Informational Parameters (OGF: 0x04)
+    ReadLocalVersionInformation,
+    ReadLocalSupportedCommands,
+    ReadLocalSupportedFeatures,
+    ReadBufferSize,
+    ReadBdAddr,
+
     // LE Commands (OGF: 0x08)
     LeSetEventMask {
         event_mask: u64,
@@ -131,6 +138,13 @@ impl HciCommand {
             Self::Reset => (OGF_HOST_CTL, OCF_RESET),
             Self::SetEventMask { .. } => (OGF_HOST_CTL, OCF_SET_EVENT_MASK),
 
+            // Informational Parameter Commands
+            Self::ReadLocalVersionInformation => (OGF_INFO_PARAM, OCF_READ_LOCAL_VERSION_INFORMATION),
+            Self::ReadLocalSupportedCommands => (OGF_INFO_PARAM, OCF_READ_LOCAL_SUPPORTED_COMMANDS),
+            Self::ReadLocalSupportedFeatures => (OGF_INFO_PARAM, OCF_READ_LOCAL_SUPPORTED_FEATURES),
+            Self::ReadBufferSize => (OGF_INFO_PARAM, OCF_READ_BUFFER_SIZE),
+            Self::ReadBdAddr => (OGF_INFO_PARAM, OCF_READ_BD_ADDR),
+
             // LE Commands
             Self::LeSetEventMask { .. } => (OGF_LE, OCF_LE_SET_EVENT_MASK),
             Self::LeReadBufferSize => (OGF_LE, OCF_LE_READ_BUFFER_SIZE),
@@ -160,6 +174,11 @@ impl HciCommand {
             Self::Inquiry
             | Self::InquiryCancel
             | Self::Reset
+            | Self::ReadLocalVersionInformation
+            | Self::ReadLocalSupportedCommands
+            | Self::ReadLocalSupportedFeatures
+            | Self::ReadBufferSize
+            | Self::ReadBdAddr
             | Self::LeReadBufferSize
             | Self::LeReadLocalSupportedFeatures
             | Self::LeReadAdvertisingPhysicalChannelTxPower

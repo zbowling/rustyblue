@@ -2,6 +2,7 @@
 
 use super::constants::*;
 use super::packet::*;
+use super::acl::HciAcl;
 
 #[test]
 fn test_hci_command_serialization() {
@@ -84,6 +85,32 @@ fn test_hci_command_serialization() {
     assert_eq!(packet[4], 0x01);
     assert_eq!(packet[5], 0x02);
     assert_eq!(packet[6], 0x03);
+}
+
+#[test]
+fn test_info_commands() {
+    let cmd = HciCommand::ReadLocalVersionInformation;
+    let packet = cmd.to_packet();
+    let opcode = u16::from_le_bytes([packet[1], packet[2]]);
+    assert_eq!(opcode, ((OGF_INFO_PARAM as u16) << 10) | OCF_READ_LOCAL_VERSION_INFORMATION);
+    assert_eq!(packet[3], 0);
+
+    let cmd = HciCommand::ReadBdAddr;
+    let packet = cmd.to_packet();
+    let opcode = u16::from_le_bytes([packet[1], packet[2]]);
+    assert_eq!(opcode, ((OGF_INFO_PARAM as u16) << 10) | OCF_READ_BD_ADDR);
+    assert_eq!(packet[3], 0);
+}
+
+#[test]
+fn test_acl_packet_serialization() {
+    let acl = HciAcl::new(0x0001, 0x02, 0x00, vec![1, 2, 3, 4]);
+    let bytes = acl.to_bytes();
+    assert_eq!(bytes[0], HCI_ACL_PKT);
+    let parsed = HciAcl::parse(&bytes[1..]).unwrap();
+    assert_eq!(parsed.handle, 0x0001);
+    assert_eq!(parsed.pb_flag, 0x02);
+    assert_eq!(parsed.data, vec![1, 2, 3, 4]);
 }
 
 #[test]
