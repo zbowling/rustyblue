@@ -3,25 +3,26 @@
 //! This module provides a client for interacting with GATT servers.
 
 use crate::att::{
-    AttClient, AttError, AttErrorCode, AttPermissions, AttResult, AttributeData,
+    AttClient, AttError, AttResult, 
     ExecuteWriteRequest, ExecuteWriteResponse, FindByTypeValueRequest, FindByTypeValueResponse,
     FindInformationRequest, HandleUuidPair, HandleValueConfirmation, HandleValueIndication,
     HandleValueNotification, PrepareWriteRequest, PrepareWriteResponse, ReadBlobRequest,
     ReadBlobResponse, ReadByGroupTypeRequest, ReadByTypeRequest, ReadMultipleRequest,
-    ReadMultipleResponse, ReadRequest, ReadResponse, SecurityLevel, WriteRequest, ATT_CID,
+    ReadMultipleResponse, ReadRequest, ReadResponse, WriteRequest, ATT_CID,
     ATT_DEFAULT_MTU, ATT_HANDLE_MAX, ATT_HANDLE_MIN, ATT_MAX_MTU, CHARACTERISTIC_UUID,
-    CLIENT_CHAR_CONFIG_UUID, PRIMARY_SERVICE_UUID,
+    CLIENT_CHAR_CONFIG_UUID, PRIMARY_SERVICE_UUID, AttOpcode
 };
+use crate::att::types::AttPacket;
 use crate::error::Error;
 use crate::gap::BdAddr;
-use crate::gatt::server::Descriptor;
-use crate::gatt::types::{Characteristic, CharacteristicProperty, Service, Uuid};
+use crate::gatt::types::{Characteristic, CharacteristicProperty, Service};
+use crate::uuid::Uuid;
 use crate::hci::constants::{
     EVT_CMD_COMPLETE, EVT_CMD_STATUS, EVT_DISCONN_COMPLETE, EVT_LE_CONN_COMPLETE,
     EVT_LE_META_EVENT, OCF_LE_CREATE_CONNECTION, OCF_LE_SET_SCAN_PARAMETERS, OGF_LE,
 };
 use crate::hci::{HciCommand, HciEvent, HciSocket};
-use crate::l2cap::{/*L2capError,*/ ConnectionType, L2capManager};
+use crate::l2cap::L2capManager;
 use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -466,8 +467,8 @@ impl GattClient {
         let event = match self.socket.read_event_timeout(timeout) {
             Ok(evt) => evt,
             Err(e) => {
-                if let crate::error::HciError::ReceiveError(io_err) = &e {
-                    if io_err.kind() == std::io::ErrorKind::TimedOut {
+                if let crate::error::HciError::ReceiveError(err_str) = &e {
+                    if err_str.contains("timed out") {
                         return Ok(());
                     }
                 }
@@ -645,7 +646,7 @@ impl GattClient {
                     // 128-bit UUID
                     let mut uuid_bytes = [0u8; 16];
                     uuid_bytes.copy_from_slice(&value[0..16]);
-                    Uuid::from_bytes(&uuid_bytes)
+                    Uuid::try_from_slice_le(&uuid_bytes).ok_or(AttError::InvalidPdu)?
                 } else {
                     continue; // Invalid UUID length
                 };
@@ -752,7 +753,7 @@ impl GattClient {
                     // 128-bit UUID
                     let mut uuid_bytes = [0u8; 16];
                     uuid_bytes.copy_from_slice(&value[3..19]);
-                    Uuid::from_bytes(&uuid_bytes)
+                    Uuid::try_from_slice_le(&uuid_bytes).ok_or(AttError::InvalidPdu)?
                 } else {
                     continue; // Invalid UUID length
                 };
@@ -976,6 +977,43 @@ impl GattClient {
         Ok(())
     }
 
+    /// Handle an ATT Error Response
+    fn handle_error_response(&mut self, data: &[u8]) -> AttResult<()> {
+        if data.len() < 4 {
+            return Err(AttError::InvalidPdu);
+        }
+
+        let req_opcode_byte = data[0];
+        let handle = u16::from_le_bytes([data[1], data[2]]);
+        let error_code_byte = data[3];
+        
+        error!(
+            "ATT Error Response: ReqOpcode=0x{:02X}, Handle=0x{:04X}, ErrorCode=0x{:02X}",
+            req_opcode_byte, handle, error_code_byte
+        );
+
+        // We received an error - find the pending request and report the error
+        {
+            let mut requests = self.pending_requests.lock().unwrap();
+            if let Some(req) = requests.front_mut() {
+                if req.opcode as u8 == req_opcode_byte {
+                    let callback = req.callback.take().ok_or(AttError::InvalidState)?;
+                    callback(Err(AttError::Protocol(error_code_byte, handle)))?;
+                    requests.pop_front();
+                } else {
+                    warn!(
+                        "Error response for opcode 0x{:02X} but pending request has opcode 0x{:02X}",
+                        req_opcode_byte, req.opcode as u8
+                    );
+                }
+            } else {
+                warn!("Error response received but no pending request");
+            }
+        }
+        // Propagate the error if needed, or just log it?
+        Err(AttError::Protocol(error_code_byte, handle))
+    }
+
     fn handle_att_pdu(&mut self, pdu: &[u8]) -> AttResult<()> {
         if pdu.is_empty() {
             return Err(AttError::InvalidPdu);
@@ -1016,7 +1054,7 @@ impl GattClient {
                         let uuid16 = u16::from_le_bytes([uuid_bytes[0], uuid_bytes[1]]);
                         Ok(Uuid::from_u16(uuid16))
                     } else if uuid_bytes.len() == 16 {
-                        Uuid::from_bytes(uuid_bytes).ok_or(AttError::InvalidPdu)
+                        Uuid::try_from_slice_le(uuid_bytes).ok_or(AttError::InvalidPdu)
                     } else {
                         Err(AttError::InvalidPdu)
                     };
@@ -1041,17 +1079,26 @@ impl GattClient {
                 if let Some(discovery_state) = pending_discovery_guard.as_mut() {
                     if let DiscoveryState::DiscoveringCharacteristics(service_idx) = discovery_state
                     {
-                        let mut discovered_services_guard =
-                            self.discovered_services.lock().unwrap();
-                        if let Some(service) = discovered_services_guard.get_mut(*service_idx) {
+                        // Fix borrow issue - copy the service_idx value instead of using a reference
+                        let service_idx_copy = *service_idx;
+                        // Drop the lock early before making any further self borrows
+                        drop(pending_discovery_guard);
+                        
+                        // Now handle the discovered characteristics
+                        let mut discovered_services_guard = self.discovered_services.lock().unwrap();
+                        if let Some(service) = discovered_services_guard.get(service_idx_copy) {
+                            let service_start_handle = service.start_handle;
                             drop(discovered_services_guard);
+                            
+                            // Update characteristics cache
                             let mut characteristics_cache = self.characteristics.write().unwrap();
-                            characteristics_cache.insert(service.start_handle, characteristics);
+                            characteristics_cache.insert(service_start_handle, characteristics);
                         } else {
                             warn!("Service index out of bounds during characteristic discovery");
                             drop(discovered_services_guard);
                         }
-                        drop(pending_discovery_guard);
+                        
+                        // Finally, advance discovery state
                         self.advance_discovery_state()?;
                     } else {
                         warn!(
@@ -1083,7 +1130,7 @@ impl GattClient {
                         let uuid16 = u16::from_le_bytes([uuid_bytes[0], uuid_bytes[1]]);
                         Ok(Uuid::from_u16(uuid16))
                     } else if uuid_bytes.len() == 16 {
-                        Uuid::from_bytes(uuid_bytes).ok_or(AttError::InvalidPdu)
+                        Uuid::try_from_slice_le(uuid_bytes).ok_or(AttError::InvalidPdu)
                     } else {
                         Err(AttError::InvalidPdu)
                     };
@@ -1117,7 +1164,10 @@ impl GattClient {
                 Ok(())
             }
             Ok(AttOpcode::PrepareWriteResponse) => {
-                let response = PrepareWriteResponse::parse(pdu)?;
+                let _response = match PrepareWriteResponse::parse(pdu) {
+                    Ok(resp) => resp,
+                    Err(e) => return Err(e),
+                };
                 // Find pending request and verify response
                 let mut requests = self.pending_requests.lock().unwrap();
                 if let Some(req) = requests.front_mut() {
@@ -1198,36 +1248,8 @@ impl GattClient {
                 Ok(())
             }
             Ok(AttOpcode::ErrorResponse) => {
-                // Parse ErrorResponse
-                if data.len() < 4 {
-                    return Err(AttError::InvalidPdu);
-                }
-                let req_opcode_byte = data[0];
-                let handle = u16::from_le_bytes([data[1], data[2]]);
-                let error_code_byte = data[3];
-                let error_code = AttErrorCode::from(error_code_byte);
-                error!(
-                    "ATT Error Response: ReqOpcode=0x{:02X}, Handle=0x{:04X}, ErrorCode={:?}",
-                    req_opcode_byte, handle, error_code
-                );
-
-                // Find pending request and complete it with error
-                let mut requests = self.pending_requests.lock().unwrap();
-                if let Some(req) = requests.front_mut() {
-                    // Check if the req_opcode matches the pending request
-                    if req.opcode as u8 == req_opcode_byte {
-                        let callback = req.callback.take().ok_or(AttError::InvalidState)?;
-                        callback(Err(AttError::Protocol(error_code, handle)))?;
-                        requests.pop_front();
-                    } else {
-                        warn!("Received ErrorResponse for opcode 0x{:02X}, but pending request is {:?}", req_opcode_byte, req.opcode);
-                        // Don't remove the pending request, maybe the error is for something else?
-                    }
-                } else {
-                    warn!("Received ErrorResponse with no pending request");
-                }
-                // Propagate the error if needed, or just log it?
-                Err(AttError::Protocol(error_code, handle))
+                self.handle_error_response(data)?;
+                Ok(())
             }
             Ok(unhandled_opcode) => {
                 warn!("Unhandled ATT Opcode received: {:?}", unhandled_opcode);
@@ -1259,38 +1281,69 @@ impl GattClient {
     }
 
     fn advance_discovery_state(&mut self) -> AttResult<()> {
-        let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
-        let current_state = pending_discovery_guard.clone();
+        let current_state = {
+            let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
+            pending_discovery_guard.take()
+        };
 
         match current_state {
             Some(DiscoveryState::DiscoveringServices(_)) => {
-                let discovered_services = self.discovered_services.lock().unwrap();
-                if !discovered_services.is_empty() {
+                let services_len = {
+                    let services_guard = self.discovered_services.lock().unwrap();
+                    let len = services_guard.len();
+                    drop(services_guard);
+                    len
+                };
+                
+                if services_len > 0 {
+                    let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
                     *pending_discovery_guard = Some(DiscoveryState::DiscoveringCharacteristics(0));
-                    let first_service = discovered_services[0].clone();
-                    drop(discovered_services);
                     drop(pending_discovery_guard);
+                    
+                    // Proceed with discovery
+                    // Next step would be implemented here
                 } else {
+                    let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
                     *pending_discovery_guard = Some(DiscoveryState::Idle);
+                    drop(pending_discovery_guard);
                     info!("Discovery complete (no services).");
                 }
             }
             Some(DiscoveryState::DiscoveringCharacteristics(service_idx)) => {
-                let discovered_services = self.discovered_services.lock().unwrap();
                 let next_service_idx = service_idx + 1;
-                if next_service_idx < discovered_services.len() {
-                    *pending_discovery_guard =
-                        Some(DiscoveryState::DiscoveringCharacteristics(next_service_idx));
-                    let next_service = discovered_services[next_service_idx].clone();
-                    drop(discovered_services);
+                let services_len = {
+                    let services_guard = self.discovered_services.lock().unwrap();
+                    let len = services_guard.len();
+                    drop(services_guard);
+                    len
+                };
+                
+                if next_service_idx < services_len {
+                    let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
+                    *pending_discovery_guard = Some(DiscoveryState::DiscoveringCharacteristics(next_service_idx));
                     drop(pending_discovery_guard);
+                    
+                    // Proceed with discovery
+                    // Next step would be implemented here
                 } else {
+                    let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
                     *pending_discovery_guard = Some(DiscoveryState::Idle);
+                    drop(pending_discovery_guard);
                     info!("Discovery complete (all services).");
                 }
             }
-            _ => {}
+            Some(DiscoveryState::DiscoveringDescriptors(_, _)) => {
+                // Handle descriptor discovery - would be implemented here
+                let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
+                *pending_discovery_guard = Some(DiscoveryState::Idle);
+                drop(pending_discovery_guard);
+                info!("Discovery complete (descriptors).");
+            }
+            Some(DiscoveryState::Idle) | None => {
+                // Already idle or no discovery state
+            }
         }
+        
         Ok(())
     }
 }

@@ -1,16 +1,19 @@
+//! UUID handling for Bluetooth
+//!
+//! This module provides functionality for working with Bluetooth UUIDs.
+
 use rand::RngCore;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::ParseIntError;
 use std::str::FromStr;
+use hex;
 
-/// Represents a 128-bit Bluetooth UUID.
-///
-/// This struct handles conversions between 16-bit, 32-bit, and 128-bit Bluetooth UUID formats.
-/// Internally, the UUID is always stored as a 128-bit value in little-endian byte order.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+/// A Bluetooth UUID
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Uuid {
-    bytes: [u8; 16],
+    /// The 128-bit UUID value
+    pub value: u128,
 }
 
 /// The base UUID used for constructing 128-bit UUIDs from 16-bit and 32-bit values.
@@ -23,35 +26,27 @@ const BASE_UUID_BYTES: [u8; 16] = [
 const BASE_OFFSET: usize = 12;
 
 impl Uuid {
-    /// Creates a new 128-bit UUID directly from 16 bytes (little-endian).
-    pub const fn from_bytes_le(bytes: [u8; 16]) -> Self {
-        Uuid { bytes }
+    /// Create a new UUID from a 128-bit value
+    pub fn new(value: u128) -> Self {
+        Self { value }
     }
 
-    /// Creates a new 128-bit UUID directly from 16 bytes (big-endian).
-    pub fn from_bytes_be(mut bytes: [u8; 16]) -> Self {
-        bytes.reverse(); // Convert to little-endian internally
-        Uuid { bytes }
+    /// Create a new UUID from a 16-bit value (base UUID)
+    pub fn from_u16(value: u16) -> Self {
+        // Base UUID for 16-bit UUIDs: 0000XXXX-0000-1000-8000-00805F9B34FB
+        let base: u128 = 0x00000000_0000_1000_8000_00805F9B34FB;
+        Self {
+            value: base | (value as u128),
+        }
     }
 
-    /// Creates a 128-bit UUID from a 16-bit SIG-assigned value.
-    /// Formula: `value * 2^96 + BASE_UUID`
-    pub const fn from_u16(uuid16: u16) -> Self {
-        let mut bytes = BASE_UUID_BYTES;
-        bytes[BASE_OFFSET] = uuid16 as u8;
-        bytes[BASE_OFFSET + 1] = (uuid16 >> 8) as u8;
-        Uuid { bytes }
-    }
-
-    /// Creates a 128-bit UUID from a 32-bit SIG-assigned value.
-    /// Formula: `value * 2^96 + BASE_UUID`
-    pub const fn from_u32(uuid32: u32) -> Self {
-        let mut bytes = BASE_UUID_BYTES;
-        bytes[BASE_OFFSET] = uuid32 as u8;
-        bytes[BASE_OFFSET + 1] = (uuid32 >> 8) as u8;
-        bytes[BASE_OFFSET + 2] = (uuid32 >> 16) as u8;
-        bytes[BASE_OFFSET + 3] = (uuid32 >> 24) as u8;
-        Uuid { bytes }
+    /// Create a new UUID from a 32-bit value (base UUID)
+    pub fn from_u32(value: u32) -> Self {
+        // Base UUID for 32-bit UUIDs: XXXXXXXX-0000-1000-8000-00805F9B34FB
+        let base: u128 = 0x00000000_0000_1000_8000_00805F9B34FB;
+        Self {
+            value: base | ((value as u128) << 96),
+        }
     }
 
     /// Tries to create a UUID from a byte slice.
@@ -72,7 +67,7 @@ impl Uuid {
             16 => {
                 let mut bytes = [0u8; 16];
                 bytes.copy_from_slice(slice);
-                Some(Uuid::from_bytes_le(bytes))
+                Some(Uuid::new(u128::from_le_bytes(bytes)))
             }
             _ => None,
         }
@@ -98,59 +93,37 @@ impl Uuid {
                                // bytes[8..10] (clk_seq_hi_res, clk_seq_low) - usually kept BE
                                // bytes[10..16] (node) - usually kept BE
 
-        Uuid { bytes }
+        Self { value: u128::from_le_bytes(bytes) }
     }
 
-    /// Returns the underlying 16 bytes in little-endian order.
-    pub const fn as_bytes_le(&self) -> &[u8; 16] {
-        &self.bytes
-    }
-
-    /// Returns the underlying 16 bytes in big-endian order.
-    pub fn as_bytes_be(&self) -> [u8; 16] {
-        let mut bytes = self.bytes;
-        bytes.reverse();
-        bytes
-    }
-
-    /// Checks if the UUID is derived from the standard Bluetooth base UUID.
-    fn is_sig_assigned(&self) -> bool {
-        self.bytes[0..BASE_OFFSET] == BASE_UUID_BYTES[0..BASE_OFFSET]
-    }
-
-    /// Tries to represent the UUID as a 16-bit value.
-    ///
-    /// Returns `Some(u16)` if the UUID is a standard SIG-assigned 16-bit UUID,
-    /// otherwise returns `None`.
+    /// Get the 16-bit value if this is a 16-bit UUID
     pub fn as_u16(&self) -> Option<u16> {
-        if self.is_sig_assigned()
-            && self.bytes[BASE_OFFSET + 2] == 0
-            && self.bytes[BASE_OFFSET + 3] == 0
-        {
-            Some(u16::from_le_bytes([
-                self.bytes[BASE_OFFSET],
-                self.bytes[BASE_OFFSET + 1],
-            ]))
+        let base: u128 = 0x00000000_0000_1000_8000_00805F9B34FB;
+        if (self.value & !0xFFFF) == base {
+            Some((self.value & 0xFFFF) as u16)
         } else {
             None
         }
     }
 
-    /// Tries to represent the UUID as a 32-bit value.
-    ///
-    /// Returns `Some(u32)` if the UUID is a standard SIG-assigned 32-bit UUID,
-    /// otherwise returns `None`.
+    /// Get the 32-bit value if this is a 32-bit UUID
     pub fn as_u32(&self) -> Option<u32> {
-        if self.is_sig_assigned() {
-            Some(u32::from_le_bytes([
-                self.bytes[BASE_OFFSET],
-                self.bytes[BASE_OFFSET + 1],
-                self.bytes[BASE_OFFSET + 2],
-                self.bytes[BASE_OFFSET + 3],
-            ]))
+        let base: u128 = 0x00000000_0000_1000_8000_00805F9B34FB;
+        if (self.value & !0xFFFFFFFF_0000_0000_0000_0000_0000_0000) == base {
+            Some(((self.value >> 96) & 0xFFFFFFFF) as u32)
         } else {
             None
         }
+    }
+
+    /// Get the UUID as a byte array in big-endian order
+    pub fn as_bytes_be(&self) -> [u8; 16] {
+        self.value.to_be_bytes()
+    }
+
+    /// Get the UUID as a byte array in little-endian order
+    pub fn as_bytes_le(&self) -> [u8; 16] {
+        self.value.to_le_bytes()
     }
 }
 
@@ -171,7 +144,7 @@ impl From<u32> for Uuid {
 impl From<[u8; 16]> for Uuid {
     /// Assumes bytes are in little-endian order.
     fn from(bytes: [u8; 16]) -> Self {
-        Uuid::from_bytes_le(bytes)
+        Self { value: u128::from_le_bytes(bytes) }
     }
 }
 
@@ -203,13 +176,13 @@ impl PartialEq<Uuid> for u32 {
 
 impl PartialEq<[u8; 16]> for Uuid {
     fn eq(&self, other: &[u8; 16]) -> bool {
-        &self.bytes == other
+        self.value.to_le_bytes() == *other
     }
 }
 
 impl PartialEq<Uuid> for [u8; 16] {
     fn eq(&self, other: &Uuid) -> bool {
-        &other.bytes == self
+        other.value.to_le_bytes() == *self
     }
 }
 
@@ -219,45 +192,24 @@ impl<'a> PartialEq<&'a [u8]> for Uuid {
     }
 }
 
-// --- Hashing ---
+// --- Formatting ---
 
-impl Hash for Uuid {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.bytes.hash(state);
-    }
-}
-
-// --- Formatting (Display, Debug) --- Placeholder for now
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Standard hyphenated format (big-endian)
-        let b = self.as_bytes_be();
-        write!(f, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-            b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-            b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]
+        let bytes = self.value.to_be_bytes();
+        write!(
+            f,
+            "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5],
+            bytes[6], bytes[7],
+            bytes[8], bytes[9],
+            bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
         )
     }
 }
 
-impl fmt::Debug for Uuid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Show short form if possible, otherwise full hyphenated form
-        if let Some(u16_val) = self.as_u16() {
-            write!(f, "Uuid(0x{:04X})", u16_val)
-        } else if let Some(u32_val) = self.as_u32() {
-            // Only show 32-bit if it's not also representable as 16-bit
-            if u32_val > u16::MAX as u32 {
-                write!(f, "Uuid(0x{:08X})", u32_val)
-            } else {
-                write!(f, "Uuid(0x{:04X})", u32_val as u16)
-            }
-        } else {
-            fmt::Display::fmt(self, f)
-        }
-    }
-}
-
-// --- Parsing --- Placeholder for now
+// --- Parsing ---
 
 #[derive(Debug)]
 pub enum UuidParseError {
@@ -299,7 +251,7 @@ impl FromStr for Uuid {
                 // Full 128-bit form without hyphens
                 let mut bytes_be = [0u8; 16];
                 hex::decode_to_slice(&cleaned, &mut bytes_be)?;
-                Ok(Uuid::from_bytes_be(bytes_be))
+                Ok(Uuid::new(u128::from_be_bytes(bytes_be)))
             }
             _ => Err(UuidParseError::InvalidLength),
         }

@@ -33,32 +33,49 @@ pub struct Characteristic {
 }
 
 bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    /// Characteristic properties as defined in the Bluetooth specification
     pub struct CharacteristicProperty: u8 {
+        /// Characteristic supports broadcasting
         const BROADCAST = 0x01;
+        /// Characteristic is readable
         const READ = 0x02;
+        /// Characteristic can be written without response
         const WRITE_WITHOUT_RESPONSE = 0x04;
+        /// Characteristic can be written
         const WRITE = 0x08;
+        /// Characteristic supports notifications
         const NOTIFY = 0x10;
+        /// Characteristic supports indications
         const INDICATE = 0x20;
+        /// Characteristic supports signed writes
         const AUTHENTICATED_SIGNED_WRITES = 0x40;
+        /// Characteristic has extended properties
         const EXTENDED_PROPERTIES = 0x80;
     }
 }
 
 impl CharacteristicProperty {
+    /// Check if the READ property is set
     pub fn can_read(&self) -> bool {
         self.contains(CharacteristicProperty::READ)
     }
+    
+    /// Check if the WRITE property is set
     pub fn can_write(&self) -> bool {
         self.contains(CharacteristicProperty::WRITE)
     }
+    
+    /// Check if the WRITE_WITHOUT_RESPONSE property is set
     pub fn can_write_without_response(&self) -> bool {
         self.contains(CharacteristicProperty::WRITE_WITHOUT_RESPONSE)
     }
+    
+    /// Check if the NOTIFY property is set
     pub fn can_notify(&self) -> bool {
         self.contains(CharacteristicProperty::NOTIFY)
     }
+    
+    /// Check if the INDICATE property is set
     pub fn can_indicate(&self) -> bool {
         self.contains(CharacteristicProperty::INDICATE)
     }

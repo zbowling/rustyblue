@@ -16,6 +16,6 @@ pub mod types;
 pub use self::client::AttClient;
 pub use self::constants::*;
 pub use self::database::{Attribute, AttributeDatabase};
-pub use self::error::{AttError, AttErrorCode, AttResult};
+pub use self::error::{AttError, AttResult};
 pub use self::server::{AttServer, AttServerConfig};
 pub use self::types::*; // Ensure types are re-exported

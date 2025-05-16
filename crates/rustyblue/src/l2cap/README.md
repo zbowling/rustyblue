@@ -1,175 +1,142 @@
-# L2CAP (Logical Link Control and Adaptation Protocol)
+# L2CAP Module
 
-The L2CAP layer sits on top of the HCI (Host Controller Interface) layer and provides a multiplexing layer that allows multiple protocols to share the physical Bluetooth connection. This README provides an overview of the L2CAP implementation in RustyBlue.
+The Logical Link Control and Adaptation Protocol (L2CAP) is a core protocol in the Bluetooth stack that provides:
 
-## Overview
+- Multiplexing between different higher layer protocols
+- Segmentation and reassembly of packets
+- Quality of Service (QoS) capabilities
+- Channel management and flow control
 
-L2CAP provides the following services to upper layers:
+## Architecture
 
-- **Protocol/Service Multiplexing**: Routes data to the appropriate upper layer protocol
-- **Segmentation and Reassembly**: Breaks large packets into smaller segments for transmission
-- **Flow Control**: Prevents buffer overflows on receiving devices
-- **Error Control**: Ensures reliable delivery of data with retransmission if needed
-- **Quality of Service (QoS)**: Provides configurable service quality options
+This implementation follows the Bluetooth Core Specification v5.2, Volume 3, Part A.
 
-## Components
+### Key Components
 
-The L2CAP implementation in RustyBlue consists of the following key components:
+#### L2CAP Manager (`core.rs`)
 
-### L2capManager
-
-The central component that manages all L2CAP operations:
+The central component that manages channels and handles all protocol operations:
 - Channel creation and management
-- PSM registration and lookup
-- Connection establishment and teardown
-- Signaling message handling
-- Data routing between channels
+- Packet routing and signaling
+- Flow control and credits management (for LE)
+- Connection establishment and disconnection
+
+#### Channels (`channel.rs`)
+
+Represents a logical L2CAP connection:
+- Channel state management
+- Segmentation and reassembly
+- Flow control and retransmission (if enabled)
+- Credit-based flow control for LE
+
+#### Packet Handling (`packet.rs`)
+
+Defines the structure of L2CAP packets and provides parsing/serialization:
+- Basic L2CAP headers (length, CID)
+- Extended headers for retransmission modes
+- Segmentation support
+
+#### Protocol/Service Multiplexers (`psm.rs`)
+
+Identifies higher layer protocols and services:
+- Standard PSM values defined by Bluetooth SIG
+- Dynamic PSM allocation for LE
+
+#### Signaling Commands (`signaling.rs`)
+
+Implementation of the L2CAP signaling commands:
+- Connection requests/responses
+- Configuration requests/responses
+- Disconnection requests/responses
+- Credit-based flow control
+- Information requests/responses
+
+### Channel Types
+
+1. **Fixed Channels** (CIDs 1-6)
+   - L2CAP Signaling (CID 1)
+   - Connectionless Reception (CID 2)
+   - ATT Protocol (CID 4)
+   - LE L2CAP Signaling (CID 5)
+   - Security Manager Protocol (CID 6)
+
+2. **Connection-Oriented Channels** (CIDs 0x40-0xFFFF)
+   - Dynamic allocation
+   - Configuration negotiation
+   - Multiple operating modes
+   
+3. **LE Credit-Based Channels** (LE only)
+   - Credit-based flow control
+   - Simplified configuration
+
+### Modes of Operation
+
+1. **Basic Mode**
+   - No retransmission or flow control
+   - Best-effort delivery
+
+2. **Enhanced Retransmission Mode**
+   - Reliable delivery
+   - Flow control
+   - Segmentation and reassembly
+   - Error recovery
+
+3. **Streaming Mode**
+   - Unreliable but sequenced delivery
+   - No flow control
+   - Suitable for audio/video
+
+4. **LE Credit-Based Flow Control Mode**
+   - Simplified approach for LE devices
+   - Credit-based flow control
+   - Reduced signaling overhead
+
+## Usage
+
+### Basic Connection Example
 
 ```rust
-let l2cap_manager = L2capManager::new(ConnectionType::LE);
+use rustyblue::l2cap::{L2capManager, PSM, ConnectionType, SecurityLevel};
+use std::sync::Arc;
 
-// Register a PSM for an upper layer protocol
+// Create L2CAP manager
+let l2cap_manager = Arc::new(L2capManager::new(ConnectionType::LE));
+
+// Connect to a remote device on a specific PSM
+let hci_handle = 0x0042; // This would be obtained from HCI layer
+let cid = l2cap_manager.connect(PSM::from_value(0x0001).unwrap(), hci_handle)?;
+
+// Send data on the channel
+l2cap_manager.send_data(cid, b"Hello, Bluetooth!")?;
+
+// Register to receive data
 l2cap_manager.register_psm(
-    PSM::SDP,
-    Some(data_callback),
-    Some(event_callback),
+    PSM::from_value(0x0001).unwrap(),
+    Some(Arc::new(Mutex::new(|data| {
+        println!("Received: {:?}", data);
+        Ok(())
+    }))),
+    None,
     ConnectionPolicy {
         min_security_level: SecurityLevel::None,
         authorization_required: false,
         auto_accept: true,
-    }
+    },
 )?;
-
-// Connect to a remote device
-let channel_id = l2cap_manager.connect(PSM::RFCOMM, hci_handle)?;
-
-// Send data on a channel
-l2cap_manager.send_data(channel_id, &data)?;
-```
-
-### L2capChannel
-
-Represents a logical connection between two devices:
-- Handles channel state management (open, closed, connecting, etc.)
-- Processes incoming data
-- Implements segmentation and reassembly
-- Supports different channel modes (Basic, Retransmission, Streaming)
-- Handles LE Credit-based flow control
-
-### Signaling Messages
-
-L2CAP uses signaling messages for connection management:
-- Connection requests and responses
-- Configuration requests and responses
-- Disconnection requests and responses
-- Information requests and responses
-- LE credit-based connection management
-
-### Protocol/Service Multiplexer (PSM)
-
-Identifies upper layer protocols:
-- Fixed PSMs for standard protocols (SDP, RFCOMM, etc.)
-- Dynamic PSMs for custom protocols
-
-## Features
-
-The L2CAP implementation includes:
-
-- **Connection-oriented channels**: For reliable data transfer
-- **Connectionless channels**: For broadcast/multicast scenarios
-- **Retransmission and Flow Control**: Enhanced reliability modes
-- **LE-specific features**: Credit-based flow control, connection parameter updates
-- **Fixed channels**: Pre-defined channels for specific protocols (ATT, SMP, etc.)
-- **Dynamic channels**: Created on-demand for upper layer protocols
-
-## Usage Examples
-
-### Establishing a Connection
-
-```rust
-// Create the L2CAP manager
-let l2cap_manager = L2capManager::new(ConnectionType::Classic);
-
-// Register a data callback
-let data_callback = |data: &[u8]| -> L2capResult<()> {
-    println!("Received data: {:?}", data);
-    Ok(())
-};
-
-// Register an event callback
-let event_callback = |event: ChannelEvent| -> L2capResult<()> {
-    match event {
-        ChannelEvent::Connected { cid, psm } => {
-            println!("Channel connected: CID={}, PSM={:?}", cid, psm);
-        },
-        ChannelEvent::Disconnected { cid, psm, reason } => {
-            println!("Channel disconnected: CID={}, PSM={:?}, Reason={}", cid, psm, reason);
-        },
-        _ => {}
-    }
-    Ok(())
-};
-
-// Register a PSM
-l2cap_manager.register_psm(
-    PSM::RFCOMM,
-    Some(Arc::new(Mutex::new(data_callback))),
-    Some(Arc::new(Mutex::new(event_callback))),
-    ConnectionPolicy {
-        min_security_level: SecurityLevel::None,
-        authorization_required: false,
-        auto_accept: true,
-    }
-)?;
-
-// Connect to a remote device
-let hci_handle = 0x0042; // Obtained from HCI layer
-let channel_id = l2cap_manager.connect(PSM::RFCOMM, hci_handle)?;
-
-// Send data
-l2cap_manager.send_data(channel_id, b"Hello, Bluetooth!")?;
 
 // Disconnect when done
-l2cap_manager.disconnect(channel_id)?;
+l2cap_manager.disconnect(cid)?;
 ```
 
-### Handling Incoming Connections
+## Specification References
 
-```rust
-// Set a global event callback to handle incoming connections
-l2cap_manager.set_global_event_callback(|event| -> L2capResult<()> {
-    match event {
-        ChannelEvent::ConnectionRequest { identifier, psm, source_cid } => {
-            println!("Incoming connection request: PSM={:?}, Source CID={}", psm, source_cid);
-            
-            // Accept the connection (in a real implementation, you'd track the local CID)
-            let local_cid = 0x0040; // This would be returned by l2cap_manager
-            l2cap_manager.accept_connection(identifier, local_cid, hci_handle)?;
-        },
-        _ => {}
-    }
-    Ok(())
-});
-```
+This implementation follows these sections of the Bluetooth Core Specification v5.2:
 
-## Limitations
+- **Vol 3, Part A**: L2CAP Specification
+  - Section 2: General Operation
+  - Section 3: Data Packet Format
+  - Section 4: Signaling Packet Formats
+  - Section 7: L2CAP for LE
 
-Current limitations of the L2CAP implementation:
-
-1. **Partial Implementation**: Some advanced features like streaming mode are not fully implemented
-2. **Limited Testing**: More extensive testing is needed for robustness
-3. **No Flush Timeout Support**: The implementation doesn't fully utilize flush timeouts
-4. **Security Integration**: Security manager integration is still pending
-5. **Connection Parameter Updates**: Full HCI integration for LE parameter updates is needed
-
-## Future Work
-
-Planned improvements for the L2CAP implementation:
-
-1. Complete implementation of Enhanced Retransmission Mode
-2. Add proper support for MTU negotiation
-3. Improve error handling and recovery
-4. Implement comprehensive unit and integration tests
-5. Better integration with the Security Manager
-6. Add support for L2CAP Extended Features
-7. Implement Enhanced Credit-Based Flow Control
+- **Channel Identifiers**: https://www.bluetooth.com/specifications/assigned-numbers/logical-link-control/
+- **Protocol/Service Multiplexers**: https://www.bluetooth.com/specifications/assigned-numbers/service-discovery/

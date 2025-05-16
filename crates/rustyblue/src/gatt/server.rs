@@ -153,7 +153,7 @@ impl GattServer {
         if let Some(uuid16) = uuid.as_u16() {
             value.extend_from_slice(&uuid16.to_le_bytes());
         } else {
-            value.extend_from_slice(&uuid.as_bytes());
+            value.extend_from_slice(&uuid.as_bytes_be());
         }
 
         let handle = self.database.add_attribute_with_next_handle(
@@ -199,7 +199,7 @@ impl GattServer {
         if let Some(uuid16) = uuid.as_u16() {
             declaration_value.extend_from_slice(&uuid16.to_le_bytes());
         } else {
-            declaration_value.extend_from_slice(uuid.as_bytes_le()); // Use LE bytes
+            declaration_value.extend_from_slice(&uuid.as_bytes_le());
         }
 
         // Add characteristic declaration attribute to database
@@ -461,22 +461,19 @@ impl GattServer {
             .ok_or(AttError::AttributeNotFound)?;
 
         // Convert GattCharacteristic to Characteristic
-        let characteristics = service
-            .characteristic_handles
-            .iter()
-            .map(|&value_handle| {
-                let characteristics = self.characteristics.read().unwrap();
-                let characteristic = characteristics
-                    .get(&value_handle)
-                    .ok_or(AttError::AttributeNotFound)?;
-                Characteristic {
+        let mut characteristics = Vec::new();
+        
+        for &value_handle in &service.characteristic_handles {
+            let char_map = self.characteristics.read().unwrap();
+            if let Some(characteristic) = char_map.get(&value_handle) {
+                characteristics.push(Characteristic {
                     uuid: characteristic.uuid.clone(),
                     declaration_handle: characteristic.declaration_handle,
                     value_handle,
                     properties: characteristic.properties,
-                }
-            })
-            .collect();
+                });
+            }
+        }
 
         Ok(characteristics)
     }
@@ -505,6 +502,23 @@ impl GattServer {
         }
 
         Ok(())
+    }
+
+    /// Find characteristics by UUID
+    pub fn find_characteristics_by_uuid(&self, service_handle: u16, uuid: &Uuid) -> Vec<Characteristic> {
+        let mut result = Vec::new();
+        
+        // Get all characteristics for the service
+        if let Ok(all_chars) = self.get_characteristics(service_handle) {
+            // Filter by UUID
+            for char in all_chars {
+                if &char.uuid == uuid {
+                    result.push(char);
+                }
+            }
+        }
+        
+        result
     }
 }
 

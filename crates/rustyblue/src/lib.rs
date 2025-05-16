@@ -24,7 +24,7 @@ pub use gatt::{
     Characteristic, CharacteristicProperty, GattClient, GattServer, GattServerConfig, Service, Uuid,
 };
 pub use hci::{HciCommand, HciEvent, HciSocket, LeAdvertisingReport};
-pub use l2cap::{L2capChannel, L2capChannelType, L2capError, L2capManager};
+pub use l2cap::{L2capChannel, L2capError, L2capManager};
 pub use scan::{parse_advertising_data, scan_le};
 pub use sdp::{SdpClient, SdpServer, ServiceRecord};
 pub use smp::{AuthRequirements, IoCapability, KeyDistribution, SecurityLevel, SmpManager};

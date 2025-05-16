@@ -301,3 +301,66 @@ pub struct ConnectionPolicy {
     /// Whether connections are auto-accepted
     pub auto_accept: bool,
 }
+
+/// L2CAP Channel Identifier
+/// 
+/// Channel IDs are used to identify a logical channel between two devices.
+/// - 0x0000: Null identifier (not used)
+/// - 0x0001: L2CAP Signaling channel
+/// - 0x0002: Connectionless reception
+/// - 0x0004: ATT protocol
+/// - 0x0005: LE L2CAP Signaling channel
+/// - 0x0006: Security Manager Protocol
+/// - 0x0007-0x003F: Reserved for future use
+/// - 0x0040-0xFFFF: Dynamically allocated
+/// 
+/// See Bluetooth Core Specification v5.2, Vol 3, Part A, Section 2.1
+pub type ChannelId = u16;
+
+/// Result codes for L2CAP Configuration requests
+/// 
+/// These codes indicate the result of a configuration request.
+/// 
+/// See Bluetooth Core Specification v5.2, Vol 3, Part A, Section 4.20
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigureResult {
+    /// Configuration successful
+    Success,
+    /// Unacceptable parameters
+    UnacceptableParameters,
+    /// Rejected
+    Rejected,
+    /// Unknown options
+    UnknownOptions,
+    /// Pending
+    Pending,
+    /// Flow spec rejected
+    FlowSpecRejected,
+}
+
+impl ConfigureResult {
+    /// Convert to the L2CAP result code
+    pub fn to_result_code(&self) -> u16 {
+        match self {
+            Self::Success => 0x0000,
+            Self::UnacceptableParameters => 0x0001,
+            Self::Rejected => 0x0002,
+            Self::UnknownOptions => 0x0003,
+            Self::Pending => 0x0004,
+            Self::FlowSpecRejected => 0x0005,
+        }
+    }
+    
+    /// Create from a result code
+    pub fn from_result_code(code: u16) -> Self {
+        match code {
+            0x0000 => Self::Success,
+            0x0001 => Self::UnacceptableParameters,
+            0x0002 => Self::Rejected,
+            0x0003 => Self::UnknownOptions,
+            0x0004 => Self::Pending,
+            0x0005 => Self::FlowSpecRejected,
+            _ => Self::Rejected,
+        }
+    }
+}

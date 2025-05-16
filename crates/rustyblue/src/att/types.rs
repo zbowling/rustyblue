@@ -1,7 +1,6 @@
 //! Type definitions for the ATT protocol
 use super::constants::*;
-use super::error::{AttError, AttErrorCode, AttResult};
-use crate::gap::BdAddr;
+use super::error::{AttError, AttResult};
 use crate::uuid::Uuid;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::TryFrom;
@@ -219,7 +218,7 @@ pub struct ErrorResponse {
     /// Attribute handle in error
     pub handle: u16,
     /// Error code
-    pub error_code: AttErrorCode,
+    pub error_code: u8,
 }
 
 impl AttPacket for ErrorResponse {
@@ -239,7 +238,7 @@ impl AttPacket for ErrorResponse {
             .read_u16::<LittleEndian>()
             .map_err(|_| AttError::InvalidPdu)?;
 
-        let error_code = data[4].into();
+        let error_code = data[4];
 
         Ok(Self {
             request_opcode,
@@ -254,7 +253,7 @@ impl AttPacket for ErrorResponse {
         packet.push(Self::opcode());
         packet.push(self.request_opcode);
         packet.extend_from_slice(&self.handle.to_le_bytes());
-        packet.push(self.error_code.into());
+        packet.push(self.error_code);
 
         packet
     }
@@ -262,7 +261,7 @@ impl AttPacket for ErrorResponse {
 
 impl ErrorResponse {
     /// Create a new error response
-    pub fn new(request_opcode: u8, handle: u16, error_code: AttErrorCode) -> Self {
+    pub fn new(request_opcode: u8, handle: u16, error_code: u8) -> Self {
         Self {
             request_opcode,
             handle,
@@ -273,7 +272,7 @@ impl ErrorResponse {
     /// Create a new error response from an AttError
     pub fn from_error(request_opcode: u8, error: &AttError) -> Self {
         let handle = error.handle().unwrap_or(0);
-        let error_code = error.to_error_code();
+        let error_code = error.to_att_code();
 
         Self {
             request_opcode,
@@ -467,7 +466,7 @@ impl FindInformationResponse {
                         continue;
                     }
                     data.extend_from_slice(&handle.to_le_bytes());
-                    data.extend_from_slice(uuid.as_bytes_le());
+                    data.extend_from_slice(&uuid.as_bytes_le());
                 }
             }
         }
@@ -1474,6 +1473,112 @@ impl AttPacket for HandleValueConfirmation {
 
     fn serialize(&self) -> Vec<u8> {
         vec![Self::opcode()]
+    }
+}
+
+/// ATT Opcodes for commands and responses
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttOpcode {
+    // Error Response
+    ErrorResponse = 0x01,
+    
+    // MTU Exchange
+    ExchangeMtuRequest = 0x02,
+    ExchangeMtuResponse = 0x03,
+    
+    // Find Information
+    FindInformationRequest = 0x04,
+    FindInformationResponse = 0x05,
+    
+    // Find By Type Value
+    FindByTypeValueRequest = 0x06,
+    FindByTypeValueResponse = 0x07,
+    
+    // Read By Type
+    ReadByTypeRequest = 0x08,
+    ReadByTypeResponse = 0x09,
+    
+    // Read Request/Response
+    ReadRequest = 0x0A,
+    ReadResponse = 0x0B,
+    
+    // Read Blob Request/Response
+    ReadBlobRequest = 0x0C,
+    ReadBlobResponse = 0x0D,
+    
+    // Read Multiple Request/Response
+    ReadMultipleRequest = 0x0E,
+    ReadMultipleResponse = 0x0F,
+    
+    // Read By Group Type
+    ReadByGroupTypeRequest = 0x10,
+    ReadByGroupTypeResponse = 0x11,
+    
+    // Write Request/Response
+    WriteRequest = 0x12,
+    WriteResponse = 0x13,
+    
+    // Write Command
+    WriteCommand = 0x52,
+    
+    // Signed Write Command
+    SignedWriteCommand = 0xD2,
+    
+    // Prepare Write Request/Response
+    PrepareWriteRequest = 0x16,
+    PrepareWriteResponse = 0x17,
+    
+    // Execute Write Request/Response
+    ExecuteWriteRequest = 0x18,
+    ExecuteWriteResponse = 0x19,
+    
+    // Handle Value Notification/Indication
+    HandleValueNotification = 0x1B,
+    HandleValueIndication = 0x1D,
+    HandleValueConfirmation = 0x1E,
+}
+
+impl TryFrom<u8> for AttOpcode {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0x01 => Ok(AttOpcode::ErrorResponse),
+            0x02 => Ok(AttOpcode::ExchangeMtuRequest),
+            0x03 => Ok(AttOpcode::ExchangeMtuResponse),
+            0x04 => Ok(AttOpcode::FindInformationRequest),
+            0x05 => Ok(AttOpcode::FindInformationResponse),
+            0x06 => Ok(AttOpcode::FindByTypeValueRequest),
+            0x07 => Ok(AttOpcode::FindByTypeValueResponse),
+            0x08 => Ok(AttOpcode::ReadByTypeRequest),
+            0x09 => Ok(AttOpcode::ReadByTypeResponse),
+            0x0A => Ok(AttOpcode::ReadRequest),
+            0x0B => Ok(AttOpcode::ReadResponse),
+            0x0C => Ok(AttOpcode::ReadBlobRequest),
+            0x0D => Ok(AttOpcode::ReadBlobResponse),
+            0x0E => Ok(AttOpcode::ReadMultipleRequest),
+            0x0F => Ok(AttOpcode::ReadMultipleResponse),
+            0x10 => Ok(AttOpcode::ReadByGroupTypeRequest),
+            0x11 => Ok(AttOpcode::ReadByGroupTypeResponse),
+            0x12 => Ok(AttOpcode::WriteRequest),
+            0x13 => Ok(AttOpcode::WriteResponse),
+            0x52 => Ok(AttOpcode::WriteCommand),
+            0xD2 => Ok(AttOpcode::SignedWriteCommand),
+            0x16 => Ok(AttOpcode::PrepareWriteRequest),
+            0x17 => Ok(AttOpcode::PrepareWriteResponse),
+            0x18 => Ok(AttOpcode::ExecuteWriteRequest),
+            0x19 => Ok(AttOpcode::ExecuteWriteResponse),
+            0x1B => Ok(AttOpcode::HandleValueNotification),
+            0x1D => Ok(AttOpcode::HandleValueIndication),
+            0x1E => Ok(AttOpcode::HandleValueConfirmation),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<AttOpcode> for u8 {
+    fn from(opcode: AttOpcode) -> Self {
+        opcode as u8
     }
 }
 

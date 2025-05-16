@@ -283,7 +283,7 @@ impl GapAdapter {
 
             // Handle timeout
             if let Err(Error::Hci(HciError::ReceiveError(e))) = &event_result {
-                if e.kind() == std::io::ErrorKind::TimedOut {
+                if e.contains("timed out") {
                     break;
                 }
             }

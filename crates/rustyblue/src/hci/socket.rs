@@ -49,7 +49,8 @@ impl HciSocket {
         let fd = unsafe { libc::socket(AF_BLUETOOTH, libc::SOCK_RAW, BTPROTO_HCI) };
 
         if fd < 0 {
-            return Err(HciError::SocketError(std::io::Error::last_os_error()));
+            let err = std::io::Error::last_os_error();
+            return Err(HciError::SocketError(format!("Failed to open HCI socket: {}", err)));
         }
 
         // Bind to the specified device
@@ -68,8 +69,9 @@ impl HciSocket {
         };
 
         if result < 0 {
+            let err = std::io::Error::last_os_error();
             unsafe { libc::close(fd) };
-            return Err(HciError::BindError(std::io::Error::last_os_error()));
+            return Err(HciError::BindError(format!("Failed to bind HCI socket: {}", err)));
         }
 
         Ok(HciSocket { fd })
@@ -89,17 +91,18 @@ impl HciSocket {
         };
 
         if bytes_read < 0 {
-            return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+            let err = std::io::Error::last_os_error();
+            return Err(HciError::ReceiveError(format!("Failed to read HCI event: {}", err)));
         }
 
         if bytes_read < 3 || buffer[0] != HCI_EVENT_PKT {
-            return Err(HciError::InvalidPacketFormat);
+            return Err(HciError::InvalidPacketFormat("Invalid HCI event packet".into()));
         }
 
         // Parse event
         match HciEvent::parse(&buffer[1..bytes_read as usize]) {
             Some(event) => Ok(event),
-            None => Err(HciError::InvalidPacketFormat),
+            None => Err(HciError::InvalidPacketFormat("Failed to parse HCI event".into())),
         }
     }
 
@@ -131,14 +134,12 @@ impl HciSocket {
             };
 
             if result < 0 {
-                return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+                let err = std::io::Error::last_os_error();
+                return Err(HciError::ReceiveError(format!("Select failed: {}", err)));
             }
 
             if result == 0 {
-                return Err(HciError::ReceiveError(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "Timed out waiting for HCI event",
-                )));
+                return Err(HciError::ReceiveError("Timed out waiting for HCI event".into()));
             }
         }
 
@@ -156,7 +157,10 @@ impl HciSocket {
                 packet.len(),
             )
         } {
-            -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
+            -1 => {
+                let err = std::io::Error::last_os_error();
+                Err(HciError::SendError(format!("Failed to send HCI command: {}", err)))
+            }
             _ => Ok(()),
         }
     }
@@ -171,7 +175,10 @@ impl HciSocket {
                 bytes.len(),
             )
         } {
-            -1 => Err(HciError::SendError(std::io::Error::last_os_error())),
+            -1 => {
+                let err = std::io::Error::last_os_error();
+                Err(HciError::SendError(format!("Failed to send ACL packet: {}", err)))
+            }
             _ => Ok(()),
         }
     }
@@ -189,15 +196,16 @@ impl HciSocket {
         };
 
         if bytes_read < 0 {
-            return Err(HciError::ReceiveError(std::io::Error::last_os_error()));
+            let err = std::io::Error::last_os_error();
+            return Err(HciError::ReceiveError(format!("Failed to read ACL packet: {}", err)));
         }
 
         if bytes_read < 5 || buffer[0] != crate::hci::constants::HCI_ACL_PKT {
-            return Err(HciError::InvalidPacketFormat);
+            return Err(HciError::InvalidPacketFormat("Invalid ACL packet format".into()));
         }
 
         HciAcl::parse(&buffer[1..bytes_read as usize])
-            .ok_or(HciError::InvalidPacketFormat)
+            .ok_or_else(|| HciError::InvalidPacketFormat("Failed to parse ACL packet".into()))
     }
 }
 

@@ -1,9 +1,12 @@
-//! Attribute database implementation for ATT server
+//! ATT Database implementation
+//!
+//! This module provides an implementation of an ATT database.
+
 use super::constants::*;
-use super::error::{AttError, AttErrorCode, AttResult};
+use super::error::{AttError, AttResult};
 use super::types::{AttPermissions, SecurityLevel};
-use crate::gatt::Uuid;
-use std::collections::BTreeMap;
+use crate::uuid::Uuid;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, RwLock};
 
 /// An attribute in the database
@@ -164,7 +167,7 @@ impl AttributeDatabase {
         // Check if the attribute exists
         let attributes = self.attributes.read().unwrap();
         if !attributes.contains_key(&handle) {
-            return Err(AttError::InvalidHandle(handle));
+            return Err(AttError::InvalidHandle);
         }
 
         callbacks.insert(handle, callback);
@@ -183,7 +186,7 @@ impl AttributeDatabase {
         // Check if the attribute exists
         let attributes = self.attributes.read().unwrap();
         if !attributes.contains_key(&handle) {
-            return Err(AttError::InvalidHandle(handle));
+            return Err(AttError::InvalidHandle);
         }
 
         callbacks.insert(handle, callback);
@@ -299,7 +302,7 @@ impl AttributeDatabase {
 
         let attr = attributes
             .get(&handle)
-            .ok_or(AttError::InvalidHandle(handle))?;
+            .ok_or(AttError::InvalidHandle)?;
 
         let value = attr.read(security_level)?;
 
@@ -318,7 +321,7 @@ impl AttributeDatabase {
 
         // Check if offset is valid
         if offset as usize > value.len() {
-            return Err(AttError::InvalidOffset(offset));
+            return Err(AttError::InvalidOffset);
         }
 
         // Return the partial value
@@ -359,7 +362,7 @@ impl AttributeDatabase {
 
         let attr = attributes
             .get_mut(&handle)
-            .ok_or(AttError::InvalidHandle(handle))?;
+            .ok_or(AttError::InvalidHandle)?;
 
         attr.write(value, security_level)
     }
@@ -500,5 +503,135 @@ impl AttributeDatabase {
         }
 
         Ok(results)
+    }
+
+    /// Find an attribute by handle
+    pub fn find_attribute(&self, handle: u16) -> AttResult<Arc<Attribute>> {
+        let attributes = self.attributes.read().unwrap();
+        
+        if let Some(attr) = attributes.get(&handle) {
+            Ok(Arc::new(attr.clone()))
+        } else {
+            Err(AttError::InvalidHandle)
+        }
+    }
+
+    /// Find all attributes in a range with a specific type
+    pub fn find_attributes_by_type(
+        &self,
+        start_handle: u16,
+        end_handle: u16,
+        type_uuid: &Uuid,
+    ) -> AttResult<Vec<Arc<Attribute>>> {
+        // Check handle range
+        if start_handle > end_handle || start_handle == 0 || end_handle > ATT_HANDLE_MAX {
+            return Err(AttError::InvalidHandle);
+        }
+
+        // Search for matching attributes
+        let attributes = self.attributes.read().unwrap();
+        let mut result = Vec::new();
+
+        for handle in start_handle..=end_handle {
+            if let Some(attr) = attributes.get(&handle) {
+                if attr.type_ == *type_uuid {
+                    result.push(Arc::new(attr.clone()));
+                }
+            }
+        }
+
+        if result.is_empty() {
+            Err(AttError::AttributeNotFound)
+        } else {
+            Ok(result)
+        }
+    }
+
+    /// Read an attribute's value
+    pub fn read_attribute(
+        &self,
+        handle: u16,
+        security_level: SecurityLevel,
+    ) -> AttResult<Vec<u8>> {
+        // Get the attribute
+        let attr = self
+            .attributes
+            .read()
+            .unwrap()
+            .get(&handle)
+            .ok_or(AttError::InvalidHandle)?
+            .clone();
+
+        // Check permissions
+        if !attr.permissions.allows_read_with_security(security_level) {
+            return Err(AttError::ReadNotPermitted);
+        }
+
+        // Return the value
+        Ok(attr.value.clone())
+    }
+
+    /// Read a blob of an attribute's value
+    pub fn read_blob(
+        &self,
+        handle: u16,
+        offset: u16,
+        security_level: SecurityLevel,
+    ) -> AttResult<Vec<u8>> {
+        // Get the attribute
+        let attr = self
+            .attributes
+            .read()
+            .unwrap()
+            .get(&handle)
+            .ok_or(AttError::InvalidHandle)?
+            .clone();
+
+        // Check permissions
+        if !attr.permissions.allows_read_with_security(security_level) {
+            return Err(AttError::ReadNotPermitted);
+        }
+
+        // Check offset
+        if offset as usize >= attr.value.len() {
+            return Err(AttError::InvalidOffset);
+        }
+
+        // Return the value from the offset
+        Ok(attr.value[offset as usize..].to_vec())
+    }
+
+    /// Write an attribute's value
+    pub fn write_attribute(
+        &self,
+        handle: u16,
+        value: &[u8],
+        security_level: SecurityLevel,
+    ) -> AttResult<()> {
+        // Get the attribute
+        let attr = self
+            .attributes
+            .read()
+            .unwrap()
+            .get(&handle)
+            .ok_or(AttError::InvalidHandle)?
+            .clone();
+
+        // Check permissions
+        if !attr.permissions.allows_write_with_security(security_level) {
+            return Err(AttError::WriteNotPermitted);
+        }
+
+        // Get a mutable reference to the database
+        let mut attributes = self.attributes.write().unwrap();
+        
+        // Update the attribute value
+        if let Some(attr) = attributes.get_mut(&handle) {
+            attr.value = value.to_vec();
+            Ok(())
+        } else {
+            // This shouldn't happen given the earlier check, but just in case
+            Err(AttError::InvalidHandle)
+        }
     }
 }

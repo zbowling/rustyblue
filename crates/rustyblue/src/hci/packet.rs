@@ -298,7 +298,7 @@ impl HciCommand {
                 min_ce_length,
                 max_ce_length,
             } => {
-                let mut params = Vec::with_capacity(24);
+                let mut params = Vec::with_capacity(25);
                 params.extend_from_slice(peer_addr);
                 params.push(*peer_addr_type);
                 params.push(*own_address_type);
@@ -315,16 +315,17 @@ impl HciCommand {
         }
     }
 
-    /// Convert the command to a raw HCI packet
+    /// Convert the command to its raw packet format
     pub fn to_packet(&self) -> Vec<u8> {
         let (ogf, ocf) = self.opcode_parts();
-        let opcode = ((ogf as u16) << 10) | (ocf & 0x3ff);
-        let params = self.parameters();
-
-        let mut packet = vec![HCI_COMMAND_PKT];
+        let opcode = ((ogf as u16) << 10) | ocf;
+        let parameters = self.parameters();
+        
+        let mut packet = Vec::with_capacity(parameters.len() + 4);
+        packet.push(HCI_COMMAND_PKT);
         packet.extend_from_slice(&opcode.to_le_bytes());
-        packet.push(params.len() as u8);
-        packet.extend_from_slice(&params);
+        packet.push(parameters.len() as u8);
+        packet.extend(parameters);
         packet
     }
 }

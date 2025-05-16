@@ -61,6 +61,8 @@ pub struct L2capChannel {
     data_callback: Option<DataCallback>,
     /// Connection type (Classic or LE)
     connection_type: ConnectionType,
+    /// HCI handle for this connection
+    pub hci_handle: u16,
     /// Credits (for LE Credit-based channels)
     credits: u16,
     /// Remote credits (for LE Credit-based channels)
@@ -111,6 +113,7 @@ impl L2capChannel {
             remote_config: ConfigOptions::default(),
             data_callback: None,
             connection_type,
+            hci_handle: 0,
             credits: 0,
             remote_credits: 0,
             mps: mtu,
