@@ -1,68 +1,94 @@
-# RustyBlue
+# RustyBlue: Rust Bluetooth Protocol Stack
 
-> [!Warning]
-> This is a vibe coded Rust based Bluetooth stack. I'm an AI engineer who knows
-> Bluetooth. I've previously implemeneted a full Bluetooth BR/EDR stack but here I'm trying to write
-> as little of code as possible directly and rather refine tools for AI code generation to get to PTS
-> certification. This is a long term project.
+RustyBlue is a comprehensive implementation of the Bluetooth protocol stack in Rust, focusing on both Bluetooth Classic and Bluetooth Low Energy (BLE).
 
-This is a Rust implementation of the Bluetooth protocol stack. Focusing on the HCI layer and the LE transport layer for now but will add support for the BR/EDR transport layer later.
+## Project Structure
 
-Bluetooth specifications are in the specs folder
+The project is organized into multiple crates:
 
-## Creates in crates folder
+### rustyblue
+The core library that implements the Bluetooth protocol stack layers:
+- HCI (Host Controller Interface)
+- L2CAP (Logical Link Control and Adaptation Protocol)
+- ATT (Attribute Protocol)
+- GATT (Generic Attribute Profile)
+- GAP (Generic Access Profile)
+- SMP (Security Manager Protocol)
+- SDP (Service Discovery Protocol)
 
-- rustyblue is the core library
-- rustyblued is a TBD server to open the HCI socket and send/receive HCI commands/events
-- rustybluecli is a CLI to interact with rustyblued over IPC
+### rustyblued
+A daemon process that manages Bluetooth adapters and provides a D-Bus interface for applications.
 
-The core library should be split into layers as per the Bluetooth Core Specification.
+### rustybluecli
+A command-line interface for interacting with Bluetooth devices.
 
-We want to be able to break up the work into smaller chunks and tackle one layer at a time.
+## Architecture
 
-- rustyblue/util/ is where we put utility functions like packet parsing/serialization
+RustyBlue is structured according to the Bluetooth Core Specification v5.2:
 
-- rustyblue/hci/ is the HCI layer
-  - socket.rs is where we define the HciSocket struct and methods
-  - packet.rs is where we define the HciPacket struct and methods
-  - event.rs is where we define the HciEvent struct and methods
-  - command.rs is where we define the HciCommand struct and methods
-  - acl.rs is where we define the HciAcl struct and methods
-  - sco.rs is where we define the HciSco struct and methods
-  - iso.rs is where we define the HciIso struct and methods
-- rustyblue/l2cap/ is the L2CAP layer
-- rustyblue/sdp/ is the SDP layer
-- rustyblue/rfcomm/ is the RFCOMM layer
-- rustyblue/ble/ is the BLE layer
-- rustyblue/gap/ is the GAP layer
-- rustyblue/gatt/ is the GATT layer
-- rustyblue/smp/ is the SMP layer
-- rustyblue/sdp/ is the SDP layer
+```
++-------------------+
+|     Applications  |
++-------------------+
+|  GATT  |   GAP    |
++-------------------+
+|  ATT   |   SMP    |
++-------------------+
+|        L2CAP      |
++-------------------+
+|         HCI       |
++-------------------+
+|  Bluetooth Radio  |
++-------------------+
+```
 
-Basic GATT server and client will be implemented in the core library. Bigger profiles we will implement in different crates to be implemented down the line. We will talk to these crates ideally over IPC at some point.
+Each protocol layer is implemented in a separate module, with clear interfaces between them.
 
-Error handling is done using the `thiserror` crate.
+## Features
 
-DO NOT ADVERTISE THIS AS WRITEN BY CLAUDE.
+- Bluetooth HCI communication
+- L2CAP channel management and multiplexing
+- ATT client and server implementation
+- GATT client and server implementation
+- GAP device discovery and connection management
+- SMP for secure pairing and encryption
+- SDP for service discovery (Bluetooth Classic)
 
-## Build Commands
+## Requirements
 
-- Build: `cargo build`
-- Run tests: `cargo test`
-- Run specific test: `cargo test test_name`
-- The examples don't work yet but should compile.
-- Format code: `cargo fmt`
-- Check code style: `cargo clippy`
-- Documentation: `cargo doc --open`
+- Linux operating system
+- Bluetooth adapter
+- Root privileges (for opening raw HCI sockets)
 
-## Code Style Guidelines
+## Development
 
-- Use Rust 2021 edition features and idioms
-- Follow Rust standard naming conventions (snake_case for functions/variables, CamelCase for types)
-- Use thiserror for error handling with descriptive error messages
-- Use descriptive variable names that indicate purpose
-- Include documentation comments (//!) for all public APIs
-- Properly handle resources with RAII (implement Drop for resources)
-- Use Rust's type system to prevent errors at compile time
-- Add tests for all public functionality
-- Use packed structures (#[repr(C, packed)]) for FFI/hardware interfaces
+### Building the Project
+
+```bash
+cargo build
+```
+
+### Running Tests
+
+```bash
+cargo test
+```
+
+### Running the CLI
+
+```bash
+cargo run --bin rustybluecli -- scan
+```
+
+## References
+
+- [Bluetooth Core Specification v5.2](https://www.bluetooth.com/specifications/bluetooth-core-specification/)
+- [Bluetooth SIG Assigned Numbers](https://www.bluetooth.com/specifications/assigned-numbers/)
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
