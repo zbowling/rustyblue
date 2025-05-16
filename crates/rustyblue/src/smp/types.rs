@@ -510,6 +510,39 @@ impl SecurityLevel {
     }
 }
 
+// Add conversion between SMP SecurityLevel and L2CAP SecurityLevel
+impl From<crate::l2cap::types::SecurityLevel> for SecurityLevel {
+    fn from(level: crate::l2cap::types::SecurityLevel) -> Self {
+        match level {
+            crate::l2cap::types::SecurityLevel::None => SecurityLevel::None,
+            crate::l2cap::types::SecurityLevel::Authentication => {
+                SecurityLevel::EncryptionWithAuthentication
+            }
+            crate::l2cap::types::SecurityLevel::AuthenticationAndEncryption => {
+                SecurityLevel::EncryptionWithAuthentication
+            }
+            crate::l2cap::types::SecurityLevel::SecureConnectionsWithEncryption => {
+                SecurityLevel::SecureConnections
+            }
+        }
+    }
+}
+
+impl From<SecurityLevel> for crate::l2cap::types::SecurityLevel {
+    fn from(level: SecurityLevel) -> Self {
+        match level {
+            SecurityLevel::None => crate::l2cap::types::SecurityLevel::None,
+            SecurityLevel::EncryptionOnly => crate::l2cap::types::SecurityLevel::Authentication,
+            SecurityLevel::EncryptionWithAuthentication => {
+                crate::l2cap::types::SecurityLevel::AuthenticationAndEncryption
+            }
+            SecurityLevel::SecureConnections => {
+                crate::l2cap::types::SecurityLevel::SecureConnectionsWithEncryption
+            }
+        }
+    }
+}
+
 /// Keypress notification type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeypressNotificationType {

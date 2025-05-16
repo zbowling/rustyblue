@@ -11,6 +11,6 @@ pub mod acl;
 #[cfg(test)]
 mod tests;
 
-pub use packet::{HciCommand, HciEvent, LeAdvertisingReport};
 pub use acl::HciAcl;
+pub use packet::{HciCommand, HciEvent, LeAdvertisingReport};
 pub use socket::HciSocket;

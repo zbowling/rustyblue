@@ -303,7 +303,7 @@ pub struct ConnectionPolicy {
 }
 
 /// L2CAP Channel Identifier
-/// 
+///
 /// Channel IDs are used to identify a logical channel between two devices.
 /// - 0x0000: Null identifier (not used)
 /// - 0x0001: L2CAP Signaling channel
@@ -313,14 +313,14 @@ pub struct ConnectionPolicy {
 /// - 0x0006: Security Manager Protocol
 /// - 0x0007-0x003F: Reserved for future use
 /// - 0x0040-0xFFFF: Dynamically allocated
-/// 
+///
 /// See Bluetooth Core Specification v5.2, Vol 3, Part A, Section 2.1
 pub type ChannelId = u16;
 
 /// Result codes for L2CAP Configuration requests
-/// 
+///
 /// These codes indicate the result of a configuration request.
-/// 
+///
 /// See Bluetooth Core Specification v5.2, Vol 3, Part A, Section 4.20
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConfigureResult {
@@ -350,7 +350,7 @@ impl ConfigureResult {
             Self::FlowSpecRejected => 0x0005,
         }
     }
-    
+
     /// Create from a result code
     pub fn from_result_code(code: u16) -> Self {
         match code {

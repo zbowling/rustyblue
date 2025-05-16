@@ -30,7 +30,8 @@ impl HciAcl {
 
     /// Convert the ACL packet to raw bytes suitable for transmission
     pub fn to_bytes(&self) -> Vec<u8> {
-        let handle_flags = self.handle | ((self.pb_flag as u16) << 12) | ((self.bc_flag as u16) << 14);
+        let handle_flags =
+            self.handle | ((self.pb_flag as u16) << 12) | ((self.bc_flag as u16) << 14);
         let mut out = Vec::with_capacity(self.data.len() + 5);
         out.push(HCI_ACL_PKT);
         out.extend_from_slice(&handle_flags.to_le_bytes());
@@ -61,4 +62,3 @@ impl HciAcl {
         })
     }
 }
-

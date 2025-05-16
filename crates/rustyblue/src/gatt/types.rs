@@ -4,7 +4,6 @@
 
 use crate::uuid::Uuid;
 use bitflags::bitflags;
-use std::fmt;
 
 /// A GATT service
 #[derive(Debug, Clone)]
@@ -59,22 +58,22 @@ impl CharacteristicProperty {
     pub fn can_read(&self) -> bool {
         self.contains(CharacteristicProperty::READ)
     }
-    
+
     /// Check if the WRITE property is set
     pub fn can_write(&self) -> bool {
         self.contains(CharacteristicProperty::WRITE)
     }
-    
+
     /// Check if the WRITE_WITHOUT_RESPONSE property is set
     pub fn can_write_without_response(&self) -> bool {
         self.contains(CharacteristicProperty::WRITE_WITHOUT_RESPONSE)
     }
-    
+
     /// Check if the NOTIFY property is set
     pub fn can_notify(&self) -> bool {
         self.contains(CharacteristicProperty::NOTIFY)
     }
-    
+
     /// Check if the INDICATE property is set
     pub fn can_indicate(&self) -> bool {
         self.contains(CharacteristicProperty::INDICATE)

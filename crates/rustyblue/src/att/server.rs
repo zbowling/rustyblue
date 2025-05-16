@@ -3,11 +3,11 @@
 //! This module provides an ATT server for handling client requests.
 
 use super::constants::*;
-use super::database::{AttributeDatabase};
-use super::error::{AttError, AttResult, AttErrorCode};
+use super::database::AttributeDatabase;
+use super::error::{AttError, AttErrorCode, AttResult};
 use super::types::*;
 use crate::gap::BdAddr;
-use crate::l2cap::{L2capError, L2capManager};
+use crate::l2cap::L2capManager;
 use crate::uuid::Uuid;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -91,13 +91,13 @@ impl AttServer {
     pub fn stop(&self) -> AttResult<()> {
         // In a real implementation, we would unregister from ATT fixed channel
         // For now, just disconnect clients
-        
+
         // Get all client addresses to avoid holding lock during iteration
         let addresses: Vec<BdAddr> = {
             let clients = self.clients.read().unwrap();
             clients.keys().cloned().collect()
         };
-        
+
         // Disconnect each client
         for addr in addresses {
             if let Err(e) = self.disconnect_client(addr) {
@@ -274,7 +274,12 @@ impl AttServer {
             ATT_HANDLE_VALUE_CONF => self.handle_handle_value_confirmation(addr),
             _ => {
                 // Unknown or unsupported opcode
-                self.send_error_response(channel_id, opcode, 0, AttErrorCode::RequestNotSupported.into())
+                self.send_error_response(
+                    channel_id,
+                    opcode,
+                    0,
+                    AttErrorCode::RequestNotSupported.into(),
+                )
             }
         }
     }
@@ -604,7 +609,12 @@ impl AttServer {
         let request = match ReadRequest::parse(data) {
             Ok(req) => req,
             Err(e) => {
-                return self.send_error_response(channel_id, ATT_READ_REQ, 0, e.to_att_code().into())
+                return self.send_error_response(
+                    channel_id,
+                    ATT_READ_REQ,
+                    0,
+                    e.to_att_code().into(),
+                )
             }
         };
 
@@ -897,7 +907,12 @@ impl AttServer {
         let request = match WriteRequest::parse(data) {
             Ok(req) => req,
             Err(e) => {
-                return self.send_error_response(channel_id, ATT_WRITE_REQ, 0, e.to_att_code().into())
+                return self.send_error_response(
+                    channel_id,
+                    ATT_WRITE_REQ,
+                    0,
+                    e.to_att_code().into(),
+                )
             }
         };
 
@@ -1115,7 +1130,7 @@ impl AttServer {
     }
 
     /// Handle Handle Value Confirmation
-    fn handle_handle_value_confirmation(&self, addr: BdAddr) -> AttResult<()> {
+    fn handle_handle_value_confirmation(&self, _addr: BdAddr) -> AttResult<()> {
         // Process indication confirmation
         // In a real implementation, this would release any pending indication
 
@@ -1142,5 +1157,27 @@ impl AttServer {
         self.l2cap_manager
             .send_data(channel_id, &response_data)
             .map_err(|e| AttError::from(e))
+    }
+
+    /// Process a write to a Client Characteristic Configuration Descriptor
+    fn process_cccd_write(&self, _char_handle: u16, _value: &[u8]) -> AttResult<()> {
+        // TODO: Process CCCD write
+        let _flags = u16::from_le_bytes([_value[0], _value[1]]);
+        let _notifications_enabled = (_flags & 0x0001) != 0;
+        let _indications_enabled = (_flags & 0x0002) != 0;
+
+        // Update the CCCD value in the database
+        // Update client subscription state
+
+        Ok(())
+    }
+    
+    /// Register a client with the server
+    pub fn register_client(&self, _addr: BdAddr, _security_level: SecurityLevel) -> AttResult<()> {
+        // Register a client
+        // In a real implementation, this would store client information
+        // and security requirements
+
+        Ok(())
     }
 }

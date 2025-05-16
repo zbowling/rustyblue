@@ -1,8 +1,8 @@
 //! Unit tests for HCI packet parsing and serialization
 
+use super::acl::HciAcl;
 use super::constants::*;
 use super::packet::*;
-use super::acl::HciAcl;
 
 #[test]
 fn test_hci_command_serialization() {
@@ -92,7 +92,10 @@ fn test_info_commands() {
     let cmd = HciCommand::ReadLocalVersionInformation;
     let packet = cmd.to_packet();
     let opcode = u16::from_le_bytes([packet[1], packet[2]]);
-    assert_eq!(opcode, ((OGF_INFO_PARAM as u16) << 10) | OCF_READ_LOCAL_VERSION_INFORMATION);
+    assert_eq!(
+        opcode,
+        ((OGF_INFO_PARAM as u16) << 10) | OCF_READ_LOCAL_VERSION_INFORMATION
+    );
     assert_eq!(packet[3], 0);
 
     let cmd = HciCommand::ReadBdAddr;

@@ -11,7 +11,6 @@ use crate::att::{
 use crate::gap::BdAddr;
 use crate::uuid::Uuid;
 use std::collections::{BTreeMap, HashMap};
-use std::io::{Cursor, Read};
 use std::sync::{Arc, RwLock};
 
 /// GATT Server configuration
@@ -359,14 +358,14 @@ impl GattServer {
     }
 
     /// Process a write to a Client Characteristic Configuration descriptor
-    fn process_cccd_write(&self, char_handle: u16, value: &[u8]) -> AttResult<()> {
+    fn process_cccd_write(&self, _char_handle: u16, value: &[u8]) -> AttResult<()> {
         if value.len() != 2 {
             return Err(AttError::InvalidAttributeValueLength);
         }
 
-        let flags = u16::from_le_bytes([value[0], value[1]]);
-        let notifications_enabled = (flags & 0x0001) != 0;
-        let indications_enabled = (flags & 0x0002) != 0;
+        let _flags = u16::from_le_bytes([value[0], value[1]]);
+        let _notifications_enabled = (_flags & 0x0001) != 0;
+        let _indications_enabled = (_flags & 0x0002) != 0;
 
         // Currently we'd need the client address to properly track this
         // For now, just update the local state
@@ -462,7 +461,7 @@ impl GattServer {
 
         // Convert GattCharacteristic to Characteristic
         let mut characteristics = Vec::new();
-        
+
         for &value_handle in &service.characteristic_handles {
             let char_map = self.characteristics.read().unwrap();
             if let Some(characteristic) = char_map.get(&value_handle) {
@@ -479,7 +478,7 @@ impl GattServer {
     }
 
     /// Register a client (called when a client connects)
-    pub fn register_client(&self, addr: BdAddr, security_level: SecurityLevel) -> AttResult<()> {
+    pub fn register_client(&self, _addr: BdAddr, _security_level: SecurityLevel) -> AttResult<()> {
         // Nothing to do here yet, but would be used for security and connection tracking
         Ok(())
     }
@@ -505,9 +504,13 @@ impl GattServer {
     }
 
     /// Find characteristics by UUID
-    pub fn find_characteristics_by_uuid(&self, service_handle: u16, uuid: &Uuid) -> Vec<Characteristic> {
+    pub fn find_characteristics_by_uuid(
+        &self,
+        service_handle: u16,
+        uuid: &Uuid,
+    ) -> Vec<Characteristic> {
         let mut result = Vec::new();
-        
+
         // Get all characteristics for the service
         if let Ok(all_chars) = self.get_characteristics(service_handle) {
             // Filter by UUID
@@ -517,7 +520,7 @@ impl GattServer {
                 }
             }
         }
-        
+
         result
     }
 }

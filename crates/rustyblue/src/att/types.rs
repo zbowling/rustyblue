@@ -2,9 +2,9 @@
 use super::constants::*;
 use super::error::{AttError, AttResult};
 use crate::uuid::Uuid;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::convert::TryFrom;
-use std::io::{Cursor, Read, Write};
+use std::io::Cursor;
 
 /// ATT Permission flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1481,57 +1481,57 @@ impl AttPacket for HandleValueConfirmation {
 pub enum AttOpcode {
     // Error Response
     ErrorResponse = 0x01,
-    
+
     // MTU Exchange
     ExchangeMtuRequest = 0x02,
     ExchangeMtuResponse = 0x03,
-    
+
     // Find Information
     FindInformationRequest = 0x04,
     FindInformationResponse = 0x05,
-    
+
     // Find By Type Value
     FindByTypeValueRequest = 0x06,
     FindByTypeValueResponse = 0x07,
-    
+
     // Read By Type
     ReadByTypeRequest = 0x08,
     ReadByTypeResponse = 0x09,
-    
+
     // Read Request/Response
     ReadRequest = 0x0A,
     ReadResponse = 0x0B,
-    
+
     // Read Blob Request/Response
     ReadBlobRequest = 0x0C,
     ReadBlobResponse = 0x0D,
-    
+
     // Read Multiple Request/Response
     ReadMultipleRequest = 0x0E,
     ReadMultipleResponse = 0x0F,
-    
+
     // Read By Group Type
     ReadByGroupTypeRequest = 0x10,
     ReadByGroupTypeResponse = 0x11,
-    
+
     // Write Request/Response
     WriteRequest = 0x12,
     WriteResponse = 0x13,
-    
+
     // Write Command
     WriteCommand = 0x52,
-    
+
     // Signed Write Command
     SignedWriteCommand = 0xD2,
-    
+
     // Prepare Write Request/Response
     PrepareWriteRequest = 0x16,
     PrepareWriteResponse = 0x17,
-    
+
     // Execute Write Request/Response
     ExecuteWriteRequest = 0x18,
     ExecuteWriteResponse = 0x19,
-    
+
     // Handle Value Notification/Indication
     HandleValueNotification = 0x1B,
     HandleValueIndication = 0x1D,

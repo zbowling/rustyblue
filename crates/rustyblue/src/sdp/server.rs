@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::sdp::protocol::SdpPacket;
-use crate::sdp::types::{DataElement, SdpPdu, ServiceRecord, Uuid};
+use crate::sdp::types::{SdpPdu, ServiceRecord, Uuid};
 use std::collections::HashMap;
 
 pub struct SdpServer {

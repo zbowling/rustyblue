@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::sdp::protocol::{decode_data_element, encode_service_search_request, SdpPacket};
+use crate::sdp::protocol::{encode_service_search_request, SdpPacket};
 use crate::sdp::types::{SdpPdu, ServiceRecord, Uuid};
 use std::collections::HashMap;
 

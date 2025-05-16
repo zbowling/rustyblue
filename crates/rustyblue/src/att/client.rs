@@ -3,14 +3,13 @@
 //! This module provides a client for interacting with ATT servers.
 
 use super::constants::*;
-use super::error::{AttError, AttResult, AttErrorCode};
-use super::types::*;
+use super::error::{AttError, AttResult};
 use super::types::AttPacket;
+use super::types::*;
 use crate::gap::BdAddr;
-use crate::l2cap::{L2capManager, L2capError};
-use crate::l2cap::types::L2capResult;
+use crate::l2cap::{L2capError, L2capManager};
 use crate::uuid::Uuid;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
@@ -74,7 +73,7 @@ impl AttClient {
     }
 
     /// Connect to the ATT server
-    pub fn connect(&self, hci_handle: u16) -> AttResult<()> {
+    pub fn connect(&self, _hci_handle: u16) -> AttResult<()> {
         // Check if already connected
         if *self.connected.read().unwrap() {
             return Ok(());
@@ -84,7 +83,7 @@ impl AttClient {
         // Since we can't directly call connect_fixed_channel, we need an alternative approach
         // For now, we'll directly set the channel ID since ATT is a fixed channel
         let channel_id = ATT_CID;
-        
+
         // Store channel ID
         *self.channel_id.write().unwrap() = Some(channel_id);
         *self.connected.write().unwrap() = true;

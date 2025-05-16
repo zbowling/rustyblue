@@ -1,202 +1,160 @@
-# Security Manager Protocol (SMP)
+# Security Manager Protocol (SMP) Module
 
-The Security Manager Protocol (SMP) is responsible for device pairing and key distribution in Bluetooth connections, providing the security foundation for Bluetooth communications.
+The Security Manager Protocol (SMP) module implements Bluetooth security features for establishing secure connections between devices.
 
 ## Overview
 
-The SMP module in RustyBlue implements the Bluetooth Core Specification's Security Manager Protocol, supporting both LE and Classic Bluetooth security mechanisms. It provides:
+SMP is responsible for:
+- Pairing devices securely
+- Generating and distributing encryption keys
+- Authenticating devices
+- Managing encryption parameters
 
-- **Pairing**: Secure pairing between devices using various methods
-- **Key generation and distribution**: Creation and exchange of encryption keys
-- **Encryption**: Link encryption using derived keys
-- **Authentication**: Verification of device identity
-- **Authorization**: Permission management for service access
+This implementation follows the [Bluetooth Core Specification v5.2, Vol 3, Part H](https://www.bluetooth.com/specifications/specs/core-specification-5-2/).
 
 ## Components
 
 ### SmpManager
 
-The central component that manages all security operations:
+Central component that manages the overall security state:
+- Initiates and responds to pairing requests
+- Establishes secure connections
+- Manages security keys
+- Interfaces with L2CAP for transport
 
-```rust
-// Create an SMP manager
-let key_store = Box::new(MemoryKeyStore::new()) as Box<dyn KeyStore + Send + Sync>;
-let smp_manager = SmpManager::new(l2cap_manager, hci_socket, key_store);
+### Pairing Process
 
-// Set callbacks for security events
-smp_manager.set_event_callback(|event| {
-    // Handle SMP events
-    Ok(())
-});
+Implements both Legacy Pairing and LE Secure Connections pairing methods:
+- Just Works (no user input)
+- Passkey Entry (user enters a code)
+- Numeric Comparison (user confirms matching numbers)
+- Out of Band (OOB) data exchange
 
-// Configure security features
-smp_manager.set_io_capability(IoCapability::DisplayYesNo);
-smp_manager.set_auth_requirements(AuthRequirements::secure());
+### Cryptographic Functions
 
-// Initiate pairing
-smp_manager.initiate_pairing(remote_device_address)?;
-```
+Implements the security algorithms required for LE pairing:
+- AES-CMAC
+- Utility functions (c1, s1, f4, f5, f6, g2)
+- Key generation and diversification
 
-### Pairing Methods
+### Key Management
 
-SMP supports multiple pairing methods to accommodate different device capabilities:
-
-- **Just Works**: No user interaction, lowest security
-- **Passkey Entry**: One device displays a passkey, the other enters it
-- **Numeric Comparison**: Both devices display a number for the user to verify
-- **Out-of-Band (OOB)**: Uses an external channel for key exchange
-
-### Security Levels
-
-The module defines different security levels:
-
-- **Level 0**: No security (unencrypted)
-- **Level 1**: Encryption without authentication (Just Works)
-- **Level 2**: Encryption with authentication (MITM protection)
-- **Level 3**: Secure Connections with encryption and authentication
-
-### Key Types
-
-Various security keys are managed:
-
-- **Long Term Key (LTK)**: Used for link encryption
-- **Identity Resolving Key (IRK)**: Used for private address resolution
-- **Connection Signature Resolving Key (CSRK)**: Used for data signing
-- **Link Key**: Used for BR/EDR connections
+Manages various security keys used in LE security:
+- Long Term Key (LTK) - used for link encryption
+- Identity Resolving Key (IRK) - used for private address resolution
+- Connection Signature Resolving Key (CSRK) - used for data signing
 
 ### Key Storage
 
-The module provides a flexible storage system for security keys:
+Persists security keys to enable re-connections without re-pairing:
+- In-memory storage implementation
+- Extensible interface for custom storage solutions
 
-```rust
-// Create a memory-based key store
-let key_store = MemoryKeyStore::new();
+## Security Levels
 
-// Or implement your own persistent storage
-struct MyKeyStore { /* ... */ }
-impl KeyStore for MyKeyStore {
-    // Implement the required methods
-}
-```
+The SMP module supports four security levels:
 
-## Pairing Process
-
-The pairing process follows these general steps:
-
-1. **Pairing Feature Exchange**: Devices exchange their capabilities
-2. **Pairing Method Selection**: An appropriate method is selected
-3. **Authentication Stage 1**: TK (Temporary Key) generation
-4. **Authentication Stage 2**: STK/LTK (Short/Long Term Key) generation
-5. **Key Distribution**: Exchange of additional security keys
-6. **Link Encryption**: Secure the connection using the derived keys
-
-## Secure Connections
-
-The module supports Bluetooth LE Secure Connections, which provides stronger security through:
-
-- **ECDH Key Exchange**: Using P-256 elliptic curve
-- **Stronger Encryption**: 128-bit AES-CCM encryption
-- **Enhanced Authentication**: More secure pairing procedures
-- **Key Derivation**: More robust key generation functions
+1. **No Security (Level 0)** - No encryption, no authentication
+2. **Encryption Only (Level 1)** - Encrypted but not authenticated (e.g., Just Works pairing)
+3. **Encryption with Authentication (Level 2)** - Encrypted with MITM protection
+4. **Secure Connections (Level 3)** - LE Secure Connections with ECDH key exchange
 
 ## Usage Examples
 
-### Initiating Pairing
+### Initialize SMP Manager
 
 ```rust
-// Configure security features
+use rustyblue::l2cap::L2capManager;
+use rustyblue::hci::HciSocket;
+use rustyblue::smp::{SmpManager, MemoryKeyStore, IoCapability, AuthRequirements};
+use std::sync::Arc;
+
+// Create key store
+let key_store = Box::new(MemoryKeyStore::new());
+
+// Create SMP manager
+let l2cap_manager = Arc::new(L2capManager::new(rustyblue::l2cap::ConnectionType::LE));
+let hci_socket = Arc::new(HciSocket::open(0).unwrap());
+let mut smp_manager = SmpManager::new(l2cap_manager, hci_socket, key_store);
+
+// Configure pairing features
 smp_manager.set_io_capability(IoCapability::DisplayYesNo);
 smp_manager.set_auth_requirements(AuthRequirements::secure());
-
-// Initiate pairing
-smp_manager.initiate_pairing(remote_device_address)?;
 ```
 
-### Responding to Pairing Requests
+### Pairing Process
 
 ```rust
-// Set event callback to handle incoming pairing requests
-smp_manager.set_event_callback(|event| {
+use rustyblue::gap::BdAddr;
+use rustyblue::smp::{SmpEvent, SmpResult};
+
+// Register event callback
+smp_manager.set_event_callback(|event| -> SmpResult<()> {
     match event {
-        SmpEvent::PairingRequest(addr, features) => {
-            // Automatically handled based on configuration
-            println!("Pairing request from {}: {:?}", addr, features);
+        SmpEvent::PairingRequest(addr, _) => {
+            println!("Pairing request from {}", addr);
         },
-        SmpEvent::PasskeyRequest(addr) => {
-            // User needs to input a passkey
-            notify_user_for_passkey_input(addr);
+        SmpEvent::DisplayPasskey(addr, passkey) => {
+            println!("Please display passkey {} to {}", passkey, addr);
         },
         SmpEvent::NumericComparisonRequest(addr, value) => {
-            // User needs to confirm value matches on both devices
-            notify_user_for_comparison(addr, value);
+            println!("Does the value {} match on device {}?", value, addr);
+            // Return true if user confirms
+            // In a real app, this would prompt the user for confirmation
         },
         SmpEvent::PairingComplete(addr, success) => {
-            println!("Pairing with {} {}", addr, 
-                     if success { "succeeded" } else { "failed" });
+            if success {
+                println!("Pairing with {} completed successfully", addr);
+            } else {
+                println!("Pairing with {} failed", addr);
+            }
         },
-        _ => {}
+        _ => { /* Handle other events */ }
     }
     Ok(())
 });
+
+// Initiate pairing
+let peer_address = BdAddr::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+smp_manager.initiate_pairing(peer_address)?;
 ```
 
-### Handling Passkey Entry
+### Using Encryption
 
 ```rust
-// Set passkey callback
-smp_manager.set_passkey_callback(|addr| {
-    // In a real application, this would prompt the user for input
-    println!("Enter passkey for device {}", addr);
-    Ok(123456) // User-entered passkey
-});
-
-// Set comparison callback
-smp_manager.set_comparison_callback(|addr, value| {
-    // In a real application, this would prompt the user for confirmation
-    println!("Confirm value {} on device {}", value, addr);
-    Ok(true) // User confirmed match
-});
-```
-
-### Working with Security Keys
-
-```rust
-// Check if a device is paired
-if smp_manager.is_paired(&device_addr)? {
+// Check if device is paired
+if smp_manager.is_paired(&peer_address)? {
     // Get the current security level
-    let level = smp_manager.security_level(&device_addr)?;
+    let security_level = smp_manager.security_level(&peer_address)?;
     
-    if level >= SecurityLevel::EncryptionWithAuthentication {
-        // Access can be granted to sensitive services
+    // Check if the security level is sufficient
+    if security_level.is_authenticated() {
+        println!("Connection is authenticated and encrypted");
+    } else if security_level.is_encrypted() {
+        println!("Connection is encrypted");
     }
 }
-
-// List all paired devices
-let paired_devices = smp_manager.paired_devices()?;
-for device in paired_devices {
-    println!("Paired device: {}", device);
-}
-
-// Remove pairing
-smp_manager.remove_pairing(&device_addr)?;
 ```
 
-## Limitations
+## Implementation Notes
 
-Current limitations of the SMP implementation:
+### Security Best Practices
 
-1. **Secure Connections**: Only partially implemented
-2. **Cross-Transport Key Generation**: Not yet implemented
-3. **Cryptographic Primitives**: Placeholder implementations need to be replaced with proper crypto library
-4. **Security Database**: In-memory implementation only; needs persistent storage
+1. **Always Use MITM Protection**: For sensitive applications, set `mitm: true` in `AuthRequirements` to ensure man-in-the-middle protection.
+2. **Consider Secure Connections**: Secure Connections provides the highest level of security with ECDH key exchange.
+3. **Implement Proper Key Storage**: Protect stored keys in a secure location, not in plain text.
+4. **User Interaction**: Design clear UI for passkey entry and numeric comparison to prevent mistakes.
 
-## Future Work
+### Bluetooth Specification References
 
-Planned improvements:
+- [Bluetooth Core Specification v5.2, Vol 3, Part H](https://www.bluetooth.org/docman/handlers/downloaddoc.ashx?doc_id=478726) - Security Manager Specification
+- [Bluetooth Core Specification v5.2, Vol 6, Part B, Section 5.1](https://www.bluetooth.org/docman/handlers/downloaddoc.ashx?doc_id=478726) - LE Security
+- [NIST SP 800-121 Rev. 2](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-121r2.pdf) - Guide to Bluetooth Security
 
-1. Complete Secure Connections implementation
-2. Add proper cryptographic implementation using a crypto library
-3. Implement persistent key storage
-4. Add support for cross-transport key derivation
-5. Enhance security level management
-6. Add more robust OOB data handling
+## Extensions
+
+The SMP module can be extended with:
+
+1. **Custom Key Storage**: Implement the `KeyStore` trait to store keys in a secure database or TPM.
+2. **Customized Pairing UI**: Implement the various callback functions to integrate with your application's UI.
+3. **Cross-Transport Key Generation**: Generate BR/EDR keys from LE keys for dual-mode devices.

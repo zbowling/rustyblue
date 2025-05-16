@@ -9,13 +9,11 @@ use super::keys::*;
 use super::pairing::*;
 use super::types::*;
 use crate::gap::BdAddr;
-use crate::hci::{HciCommand, HciEvent, HciSocket};
-use crate::l2cap::{
-    L2capChannel, L2capError, L2capManager, L2capResult, SecurityLevel as L2capSecurityLevel,
-}; // Import L2cap SecurityLevel
+use crate::hci::{HciEvent, HciSocket};
+use crate::l2cap::{L2capManager, L2capResult}; // Import L2cap SecurityLevel
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Type for SMP event callback
 pub type SmpEventCallback = Arc<Mutex<dyn FnMut(SmpEvent) -> SmpResult<()> + Send + Sync>>;
@@ -836,9 +834,8 @@ impl SmpManager {
         let mut process = {
             let mut pairing_processes = self.pairing_processes.write().unwrap();
             pairing_processes
-                .get_mut(&remote_addr)
+                .remove(&remote_addr)
                 .ok_or(SmpError::InvalidState)?
-                .clone()
         };
 
         // Check if we've received an LTK
@@ -866,6 +863,12 @@ impl SmpManager {
 
             // Store the keys if this completes the key distribution
             self.check_key_distribution_complete(remote_addr, &mut process, keys)?;
+        }
+
+        // Store the updated process
+        {
+            let mut pairing_processes = self.pairing_processes.write().unwrap();
+            pairing_processes.insert(remote_addr, process);
         }
 
         Ok(())
@@ -1242,7 +1245,7 @@ impl SmpManager {
         let hci_handle = 0; // Placeholder
 
         // Create a map of HCI handles to L2CAP connections
-        let mut handle_to_channel = HashMap::new();
+        let handle_to_channel: HashMap<u16, u16> = HashMap::new();
 
         // Look up or create the SMP channel
         if let Ok(channel_id) = self.get_or_create_smp_channel(remote_addr, hci_handle) {
@@ -1258,32 +1261,60 @@ impl SmpManager {
 
     /// Get or create an SMP channel for a device
     fn get_or_create_smp_channel(&self, remote_addr: BdAddr, hci_handle: u16) -> SmpResult<u16> {
-        // In a real implementation, we would either look up an existing channel
-        // or create a new one if it doesn't exist.
+        // Try to connect to SMP fixed channel
+        match self
+            .l2cap_manager
+            .connect_fixed_channel(SMP_CID, hci_handle)
+        {
+            Ok(channel_id) => {
+                // We need to use a thread-safe way to handle SMP packets without
+                // directly referencing self in the callback closure
 
-        // For simplicity, we'll create a new channel each time
-        // In a real implementation, we would maintain a map of BD_ADDR to channel IDs
+                // Create a weak reference to L2CAP manager to avoid cycles
+                let l2cap_manager = Arc::downgrade(&self.l2cap_manager);
 
-        // Register a PSM for SMP if not already registered
-        let data_callback = Arc::new(Mutex::new(move |data: &[u8]| -> L2capResult<()> {
-            // This is where we would process incoming SMP packets
-            println!("Received SMP packet: {:?}", data);
-            Ok(())
-        }));
+                // Clone the remote address for the callback
+                let addr_copy = remote_addr;
 
-        // Create a connection policy
-        let policy = crate::l2cap::ConnectionPolicy {
-            min_security_level: SecurityLevel::None,
-            authorization_required: false,
-            auto_accept: true,
-        };
+                // Define a static callback that doesn't capture self
+                // We'll use message passing instead by sending the received data
+                // to a channel that the SMP manager can poll
+                let callback = move |_addr: BdAddr, data: &[u8]| -> L2capResult<()> {
+                    // In a production implementation, we would:
+                    // 1. Use a channel to send the packet to the main SMP processing loop
+                    // 2. Or use an event-based system to dispatch the event
 
-        // Try to get the SMP fixed channel (CID = 6)
-        // Normally, this would involve looking up the L2CAP connection
-        // and finding the channel with the SMP CID
+                    // For now, we'll just log that we received data
+                    // This avoids the lifetime issues with self
+                    println!("Received SMP packet from {}: {:?}", addr_copy, data);
 
-        // For simplicity, we'll just return a fixed channel ID
-        Ok(SMP_CID)
+                    // In a real implementation, we'd have something like:
+                    // if let Some(l2cap) = l2cap_manager.upgrade() {
+                    //     // Process packet through some kind of event dispatcher
+                    //     // that doesn't directly reference self
+                    // }
+
+                    Ok(())
+                };
+
+                // Register the callback with L2CAP
+                if let Err(e) = self
+                    .l2cap_manager
+                    .register_fixed_channel_callback(SMP_CID, callback)
+                {
+                    return Err(SmpError::L2capError(format!(
+                        "Failed to register callback: {}",
+                        e
+                    )));
+                }
+
+                Ok(channel_id)
+            }
+            Err(e) => Err(SmpError::L2capError(format!(
+                "Failed to connect to SMP channel: {}",
+                e
+            ))),
+        }
     }
 
     /// Notify the application of an SMP event

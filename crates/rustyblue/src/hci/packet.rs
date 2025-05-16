@@ -139,7 +139,9 @@ impl HciCommand {
             Self::SetEventMask { .. } => (OGF_HOST_CTL, OCF_SET_EVENT_MASK),
 
             // Informational Parameter Commands
-            Self::ReadLocalVersionInformation => (OGF_INFO_PARAM, OCF_READ_LOCAL_VERSION_INFORMATION),
+            Self::ReadLocalVersionInformation => {
+                (OGF_INFO_PARAM, OCF_READ_LOCAL_VERSION_INFORMATION)
+            }
             Self::ReadLocalSupportedCommands => (OGF_INFO_PARAM, OCF_READ_LOCAL_SUPPORTED_COMMANDS),
             Self::ReadLocalSupportedFeatures => (OGF_INFO_PARAM, OCF_READ_LOCAL_SUPPORTED_FEATURES),
             Self::ReadBufferSize => (OGF_INFO_PARAM, OCF_READ_BUFFER_SIZE),
@@ -320,7 +322,7 @@ impl HciCommand {
         let (ogf, ocf) = self.opcode_parts();
         let opcode = ((ogf as u16) << 10) | ocf;
         let parameters = self.parameters();
-        
+
         let mut packet = Vec::with_capacity(parameters.len() + 4);
         packet.push(HCI_COMMAND_PKT);
         packet.extend_from_slice(&opcode.to_le_bytes());

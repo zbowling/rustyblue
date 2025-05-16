@@ -8,14 +8,17 @@
 //!
 //! The SMP module provides both LE and Classic Bluetooth security features.
 
-mod constants;
-mod crypto;
-mod keys;
-mod manager;
-mod pairing;
-mod types;
+pub mod constants;
+pub mod crypto;
+pub mod keys;
+pub mod manager;
+pub mod pairing;
+#[cfg(test)]
+mod tests;
+pub mod types;
 
 // Re-export public API
+pub use self::constants::*;
 pub use self::keys::KeyStore;
 pub use self::keys::*;
 pub use self::manager::SmpManager;

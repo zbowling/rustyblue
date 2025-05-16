@@ -10,7 +10,6 @@ use std::time::{Duration, Instant};
 use super::constants::*;
 use super::packet::*;
 use super::psm::PSM;
-use super::signaling::SignalingMessage;
 use super::types::*;
 
 /// Callback for received data on an L2CAP channel
@@ -394,7 +393,7 @@ impl L2capChannel {
                 }
 
                 // First two bytes contain total SDU length
-                let mut sdu_length = ((payload[1] as u16) << 8) | (payload[0] as u16);
+                let sdu_length = ((payload[1] as u16) << 8) | (payload[0] as u16);
 
                 // Initialize reassembly buffer with the total length
                 let mut buffer = Vec::with_capacity(sdu_length as usize);

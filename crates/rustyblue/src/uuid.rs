@@ -2,12 +2,12 @@
 //!
 //! This module provides functionality for working with Bluetooth UUIDs.
 
+use hex;
 use rand::RngCore;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::ParseIntError;
 use std::str::FromStr;
-use hex;
 
 /// A Bluetooth UUID
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,7 +93,9 @@ impl Uuid {
                                // bytes[8..10] (clk_seq_hi_res, clk_seq_low) - usually kept BE
                                // bytes[10..16] (node) - usually kept BE
 
-        Self { value: u128::from_le_bytes(bytes) }
+        Self {
+            value: u128::from_le_bytes(bytes),
+        }
     }
 
     /// Get the 16-bit value if this is a 16-bit UUID
@@ -144,7 +146,9 @@ impl From<u32> for Uuid {
 impl From<[u8; 16]> for Uuid {
     /// Assumes bytes are in little-endian order.
     fn from(bytes: [u8; 16]) -> Self {
-        Self { value: u128::from_le_bytes(bytes) }
+        Self {
+            value: u128::from_le_bytes(bytes),
+        }
     }
 }
 

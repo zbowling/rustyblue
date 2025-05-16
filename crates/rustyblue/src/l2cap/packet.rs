@@ -6,7 +6,7 @@ use super::constants::*;
 use super::types::*;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::TryFrom;
-use std::io::{Cursor, Read, Write};
+use std::io::Cursor;
 
 /// L2CAP Packet header
 #[derive(Debug, Clone, Copy)]

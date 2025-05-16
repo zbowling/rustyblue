@@ -7,9 +7,8 @@ use super::constants::*;
 use super::packet::*;
 use super::psm::PSM;
 use super::types::*;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::TryFrom;
-use std::io::{Cursor, Read, Write};
+use byteorder::{LittleEndian, ReadBytesExt};
+use std::io::Cursor;
 
 /// Handle for identifying signaling transactions
 pub type SignalId = u8;

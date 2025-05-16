@@ -105,7 +105,9 @@ impl fmt::Display for AttError {
             AttError::PrepareQueueFull => write!(f, "Prepare queue full"),
             AttError::AttributeNotFound => write!(f, "Attribute not found"),
             AttError::AttributeNotLong => write!(f, "Attribute not long"),
-            AttError::InsufficientEncryptionKeySize => write!(f, "Insufficient encryption key size"),
+            AttError::InsufficientEncryptionKeySize => {
+                write!(f, "Insufficient encryption key size")
+            }
             AttError::InvalidAttributeValueLength => write!(f, "Invalid attribute value length"),
             AttError::UnlikelyError => write!(f, "Unlikely error"),
             AttError::InsufficientEncryption => write!(f, "Insufficient encryption"),
@@ -116,7 +118,9 @@ impl fmt::Display for AttError {
             AttError::InvalidState => write!(f, "Invalid state for operation"),
             AttError::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
             AttError::Unknown(msg) => write!(f, "Unknown error: {}", msg),
-            AttError::Protocol(code, handle) => write!(f, "ATT protocol error: {} on handle {}", code, handle),
+            AttError::Protocol(code, handle) => {
+                write!(f, "ATT protocol error: {} on handle {}", code, handle)
+            }
             AttError::UnsupportedOpcode(opcode) => write!(f, "Unsupported opcode: {}", opcode),
             AttError::InvalidOpcode(opcode) => write!(f, "Invalid opcode: {}", opcode),
             AttError::UnknownResponse(msg) => write!(f, "Unknown response: {}", msg),
@@ -192,7 +196,7 @@ impl AttError {
             _ => None,
         }
     }
-    
+
     /// Convert to ATT error code
     pub fn to_att_code(&self) -> u8 {
         match self {

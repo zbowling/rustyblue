@@ -4,15 +4,11 @@
 //! for both legacy pairing and LE Secure Connections.
 
 use super::constants::*;
-use super::crypto::*;
 use super::keys::*;
 use super::types::*;
 use crate::gap::BdAddr;
-use crate::l2cap::*;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::collections::HashMap;
-use std::convert::TryInto;
-use std::io::{Cursor, Read, Write};
+use byteorder::{LittleEndian, ReadBytesExt};
+use std::io::{Cursor, Read};
 use std::time::{Duration, Instant};
 
 /// Pairing request/response packet

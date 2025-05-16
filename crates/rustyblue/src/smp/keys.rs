@@ -7,7 +7,7 @@
 use super::types::*;
 use crate::gap::BdAddr;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 /// Long Term Key (LTK) information
 #[derive(Debug, Clone)]

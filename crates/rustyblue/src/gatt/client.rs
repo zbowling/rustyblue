@@ -2,34 +2,26 @@
 //!
 //! This module provides a client for interacting with GATT servers.
 
-use crate::att::{
-    AttClient, AttError, AttResult, 
-    ExecuteWriteRequest, ExecuteWriteResponse, FindByTypeValueRequest, FindByTypeValueResponse,
-    FindInformationRequest, HandleUuidPair, HandleValueConfirmation, HandleValueIndication,
-    HandleValueNotification, PrepareWriteRequest, PrepareWriteResponse, ReadBlobRequest,
-    ReadBlobResponse, ReadByGroupTypeRequest, ReadByTypeRequest, ReadMultipleRequest,
-    ReadMultipleResponse, ReadRequest, ReadResponse, WriteRequest, ATT_CID,
-    ATT_DEFAULT_MTU, ATT_HANDLE_MAX, ATT_HANDLE_MIN, ATT_MAX_MTU, CHARACTERISTIC_UUID,
-    CLIENT_CHAR_CONFIG_UUID, PRIMARY_SERVICE_UUID, AttOpcode
-};
 use crate::att::types::AttPacket;
+use crate::att::{
+    AttClient, AttError, AttOpcode, AttResult, PrepareWriteResponse, ATT_HANDLE_MAX,
+    ATT_HANDLE_MIN, ATT_MAX_MTU, CHARACTERISTIC_UUID, CLIENT_CHAR_CONFIG_UUID,
+    PRIMARY_SERVICE_UUID,
+};
 use crate::error::Error;
 use crate::gap::BdAddr;
 use crate::gatt::types::{Characteristic, CharacteristicProperty, Service};
-use crate::uuid::Uuid;
 use crate::hci::constants::{
-    EVT_CMD_COMPLETE, EVT_CMD_STATUS, EVT_DISCONN_COMPLETE, EVT_LE_CONN_COMPLETE,
-    EVT_LE_META_EVENT, OCF_LE_CREATE_CONNECTION, OCF_LE_SET_SCAN_PARAMETERS, OGF_LE,
+    EVT_CMD_STATUS, EVT_DISCONN_COMPLETE, EVT_LE_CONN_COMPLETE, EVT_LE_META_EVENT,
+    OCF_LE_CREATE_CONNECTION, OCF_LE_SET_SCAN_PARAMETERS, OGF_LE,
 };
 use crate::hci::{HciCommand, HciEvent, HciSocket};
 use crate::l2cap::L2capManager;
-use log::{debug, error, info, trace, warn};
-use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::io::{Cursor, Read};
+use crate::uuid::Uuid;
+use log::{error, info, trace, warn};
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Error types specific to GATT operations
 #[derive(Debug, thiserror::Error)]
@@ -499,12 +491,11 @@ impl GattClient {
                     self.handle_disconnection_complete(disc_complete);
                 }
             }
-            // For ATT PDUs that come over ACL, we need to process them through the L2CAP manager
-            EVT_DATA_BUFFER_OVERFLOW => {
-                // Handle data buffer overflow
+            _EVT_DATA_BUFFER_OVERFLOW => {
+                // Handle buffer overflow event
+                // Implement buffer overflow handling logic here
             }
-            // Handle other events as needed
-            _ => {}
+            // No need for catch-all case as we've explicitly handled all events
         }
 
         Ok(())
@@ -986,7 +977,7 @@ impl GattClient {
         let req_opcode_byte = data[0];
         let handle = u16::from_le_bytes([data[1], data[2]]);
         let error_code_byte = data[3];
-        
+
         error!(
             "ATT Error Response: ReqOpcode=0x{:02X}, Handle=0x{:04X}, ErrorCode=0x{:02X}",
             req_opcode_byte, handle, error_code_byte
@@ -1083,13 +1074,13 @@ impl GattClient {
                         let service_idx_copy = *service_idx;
                         // Drop the lock early before making any further self borrows
                         drop(pending_discovery_guard);
-                        
+
                         // Now handle the discovered characteristics
-                        let mut discovered_services_guard = self.discovered_services.lock().unwrap();
+                        let discovered_services_guard = self.discovered_services.lock().unwrap();
                         if let Some(service) = discovered_services_guard.get(service_idx_copy) {
                             let service_start_handle = service.start_handle;
                             drop(discovered_services_guard);
-                            
+
                             // Update characteristics cache
                             let mut characteristics_cache = self.characteristics.write().unwrap();
                             characteristics_cache.insert(service_start_handle, characteristics);
@@ -1097,7 +1088,7 @@ impl GattClient {
                             warn!("Service index out of bounds during characteristic discovery");
                             drop(discovered_services_guard);
                         }
-                        
+
                         // Finally, advance discovery state
                         self.advance_discovery_state()?;
                     } else {
@@ -1294,12 +1285,12 @@ impl GattClient {
                     drop(services_guard);
                     len
                 };
-                
+
                 if services_len > 0 {
                     let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
                     *pending_discovery_guard = Some(DiscoveryState::DiscoveringCharacteristics(0));
                     drop(pending_discovery_guard);
-                    
+
                     // Proceed with discovery
                     // Next step would be implemented here
                 } else {
@@ -1317,12 +1308,13 @@ impl GattClient {
                     drop(services_guard);
                     len
                 };
-                
+
                 if next_service_idx < services_len {
                     let mut pending_discovery_guard = self.pending_discovery.lock().unwrap();
-                    *pending_discovery_guard = Some(DiscoveryState::DiscoveringCharacteristics(next_service_idx));
+                    *pending_discovery_guard =
+                        Some(DiscoveryState::DiscoveringCharacteristics(next_service_idx));
                     drop(pending_discovery_guard);
-                    
+
                     // Proceed with discovery
                     // Next step would be implemented here
                 } else {
@@ -1343,7 +1335,7 @@ impl GattClient {
                 // Already idle or no discovery state
             }
         }
-        
+
         Ok(())
     }
 }

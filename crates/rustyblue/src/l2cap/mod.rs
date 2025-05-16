@@ -18,4 +18,4 @@ pub use self::channel::L2capChannel;
 pub use self::core::{ChannelEvent, L2capManager};
 pub use self::packet::L2capPacket;
 pub use self::psm::PSM;
-pub use self::types::{ConnectionPolicy, L2capError, SecurityLevel, L2capResult};
+pub use self::types::{ConnectionPolicy, L2capError, L2capResult, SecurityLevel};

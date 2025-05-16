@@ -6,23 +6,20 @@
 //! - Signaling commands
 //! - Connection setup and teardown
 
-use crate::error::{Error, HciError};
-use crate::hci::socket::HciSocket;
+use crate::gap::BdAddr;
 use crate::l2cap::channel::{DataCallback, L2capChannel};
 use crate::l2cap::constants::*;
 use crate::l2cap::packet::L2capPacket;
 use crate::l2cap::psm::PSM;
 use crate::l2cap::signaling::SignalingMessage;
 use crate::l2cap::types::{
-    ConfigOptions, ConfigureResult, ConnectionParameterUpdate, ConnectionPolicy, ConnectionType, 
+    ConfigOptions, ConfigureResult, ConnectionParameterUpdate, ConnectionPolicy, ConnectionType,
     L2capChannelState, L2capError, L2capResult, LeCreditBasedConfig, SecurityLevel,
 };
-use log::{debug, error, info, trace, warn};
-use std::collections::{HashMap, VecDeque};
-use std::fmt;
+use log::{debug, info, warn};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
-use crate::gap::BdAddr;
 
 /// Callback for channel events like connect, disconnect, etc.
 pub type ChannelEventCallback =
@@ -664,8 +661,9 @@ impl L2capManager {
 
         // Set data callback if registered
         if let Some(ref callback) = registration.data_callback {
+            let callback_clone = Arc::clone(callback);
             channel.set_data_callback(move |data| {
-                let mut callback = callback.lock().unwrap();
+                let mut callback = callback_clone.lock().unwrap();
                 (*callback)(data)
             });
         }
@@ -898,7 +896,7 @@ impl L2capManager {
             channel.configure(&options)?;
             let response_result = ConfigureResult::Success;
             let response_options = ConfigOptions::default();
-            
+
             let response = SignalingMessage::ConfigureResponse {
                 identifier,
                 source_cid: channel.local_cid(),
@@ -906,7 +904,7 @@ impl L2capManager {
                 result: response_result.to_result_code(),
                 options: response_options,
             };
-            
+
             self.send_signaling_message(hci_handle, channel.local_cid(), response)?;
 
             if response_result == ConfigureResult::Success && flags == 0 {
@@ -1004,7 +1002,7 @@ impl L2capManager {
     ) -> L2capResult<()> {
         // Find the channel
         let (local_cid, psm) = {
-            let mut channels = self.channels.write().unwrap();
+            let channels = self.channels.write().unwrap();
 
             // Look for a channel with matching remote CID
             let mut found_channel = None;
@@ -1228,8 +1226,9 @@ impl L2capManager {
 
         // Set data callback if registered
         if let Some(ref callback) = registration.data_callback {
+            let callback_clone = Arc::clone(callback);
             channel.set_data_callback(move |data| {
-                let mut callback = callback.lock().unwrap();
+                let mut callback = callback_clone.lock().unwrap();
                 (*callback)(data)
             });
         }
@@ -1521,20 +1520,20 @@ impl L2capManager {
     pub fn connect_fixed_channel(&self, cid: u16, hci_handle: u16) -> L2capResult<u16> {
         // Fixed channels are already connected when the ACL link is established
         // Just check if the connection exists and return the CID
-        let mut channels = self.channels.write().unwrap();
-        
+        let channels = self.channels.write().unwrap();
+
         // Check if the channel already exists
         for (channel_id, channel) in channels.iter() {
             if *channel_id == cid && channel.hci_handle == hci_handle {
                 return Ok(*channel_id);
             }
         }
-        
+
         // For now, we're directly returning the CID since we need to fix the L2capChannel::new method
         // This is a temporary workaround
         Ok(cid)
     }
-    
+
     /// Register a callback for a fixed L2CAP channel
     pub fn register_fixed_channel_callback<F>(&self, cid: u16, callback: F) -> L2capResult<()>
     where
@@ -1544,7 +1543,7 @@ impl L2capManager {
         // This is a temporary workaround
         Ok(())
     }
-    
+
     /// Unregister a callback for a fixed L2CAP channel
     pub fn unregister_fixed_channel_callback(&self, cid: u16) -> L2capResult<()> {
         // For now, we're just returning success

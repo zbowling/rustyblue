@@ -6,7 +6,7 @@ use super::constants::*;
 use super::error::{AttError, AttResult};
 use super::types::{AttPermissions, SecurityLevel};
 use crate::uuid::Uuid;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 /// An attribute in the database
@@ -300,9 +300,7 @@ impl AttributeDatabase {
         // Otherwise, read directly from the attribute
         let attributes = self.attributes.read().unwrap();
 
-        let attr = attributes
-            .get(&handle)
-            .ok_or(AttError::InvalidHandle)?;
+        let attr = attributes.get(&handle).ok_or(AttError::InvalidHandle)?;
 
         let value = attr.read(security_level)?;
 
@@ -360,9 +358,7 @@ impl AttributeDatabase {
         // Otherwise, write directly to the attribute
         let mut attributes = self.attributes.write().unwrap();
 
-        let attr = attributes
-            .get_mut(&handle)
-            .ok_or(AttError::InvalidHandle)?;
+        let attr = attributes.get_mut(&handle).ok_or(AttError::InvalidHandle)?;
 
         attr.write(value, security_level)
     }
@@ -508,7 +504,7 @@ impl AttributeDatabase {
     /// Find an attribute by handle
     pub fn find_attribute(&self, handle: u16) -> AttResult<Arc<Attribute>> {
         let attributes = self.attributes.read().unwrap();
-        
+
         if let Some(attr) = attributes.get(&handle) {
             Ok(Arc::new(attr.clone()))
         } else {
@@ -548,11 +544,7 @@ impl AttributeDatabase {
     }
 
     /// Read an attribute's value
-    pub fn read_attribute(
-        &self,
-        handle: u16,
-        security_level: SecurityLevel,
-    ) -> AttResult<Vec<u8>> {
+    pub fn read_attribute(&self, handle: u16, security_level: SecurityLevel) -> AttResult<Vec<u8>> {
         // Get the attribute
         let attr = self
             .attributes
@@ -624,7 +616,7 @@ impl AttributeDatabase {
 
         // Get a mutable reference to the database
         let mut attributes = self.attributes.write().unwrap();
-        
+
         // Update the attribute value
         if let Some(attr) = attributes.get_mut(&handle) {
             attr.value = value.to_vec();
